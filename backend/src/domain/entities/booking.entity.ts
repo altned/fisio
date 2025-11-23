@@ -13,6 +13,7 @@ import { Therapist } from './therapist.entity';
 import { User } from './user.entity';
 
 export type BookingStatus = 'PENDING' | 'PAID' | 'COMPLETED';
+export type PaymentMethod = 'BANK_TRANSFER' | 'QRIS';
 
 @Entity({ name: 'bookings' })
 export class Booking {
@@ -42,6 +43,12 @@ export class Booking {
 
   @Column({ name: 'therapist_net_total', type: 'numeric', precision: 12, scale: 2 })
   therapistNetTotal!: string;
+
+  @Column({ name: 'payment_method', type: 'varchar', length: 20, nullable: true })
+  paymentMethod?: PaymentMethod | null;
+
+  @Column({ name: 'payment_proof_url', type: 'text', nullable: true })
+  paymentProofUrl?: string | null;
 
   @Column({ type: 'varchar', length: 20, default: 'PENDING' })
   status!: BookingStatus;

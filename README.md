@@ -34,8 +34,14 @@
    - `REDIS_URL=redis://localhost:6379`
 3. Jalankan migrasi, lalu start dev server seperti langkah di atas.
 
-## Payment (Midtrans)
+## Payment (Bank Transfer & QRIS Statis)
 - Konfigurasi env:
-  - `MIDTRANS_SERVER_KEY=...`
-  - `MIDTRANS_CLIENT_KEY=...`
-- Webhook endpoint: `POST /payment/webhook` (menggunakan signature Midtrans: sha512(order_id + status_code + gross_amount + server_key)).
+  - `COMPANY_BANK_NAME=...`
+  - `COMPANY_BANK_ACCOUNT=...`
+  - `COMPANY_BANK_ACCOUNT_NAME=...`
+  - `QRIS_IMAGE_URL=...` (link ke gambar QR statis)
+- Flow: Backend memberikan instruksi pembayaran (rekening/QRIS) pada init; user dapat upload bukti bayar (URL gambar); admin menandai `PAID` setelah verifikasi manual.
+- Endpoint:
+  - `POST /payment/initiate` (pilih metode BANK_TRANSFER/QRIS, kembalikan instruksi rekening/QRIS)
+  - `POST /payment/proof` (kirim URL bukti bayar)
+  - `POST /payment/confirm` (admin menandai PAID setelah verifikasi)

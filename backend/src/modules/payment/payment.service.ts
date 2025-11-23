@@ -1,43 +1,84 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import * as crypto from 'crypto';
 import { DataSource } from 'typeorm';
-import { Booking } from '../../domain/entities/booking.entity';
-import { MidtransWebhookDto } from './dto/midtrans-webhook.dto';
+import { Booking, PaymentMethod } from '../../domain/entities/booking.entity';
+import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
+import { InitiatePaymentDto } from './dto/initiate-payment.dto';
+import { UploadProofDto } from './dto/upload-proof.dto';
+
+type PaymentInstruction = {
+  method: 'BANK_TRANSFER' | 'QRIS';
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  qrisImageUrl?: string;
+  bookingId: string;
+  amount: string;
+  status: string;
+};
 
 @Injectable()
 export class PaymentService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async handleWebhook(payload: MidtransWebhookDto) {
-    if (!this.isSignatureValid(payload)) {
-      throw new BadRequestException('Signature tidak valid');
+  async initiatePayment(payload: InitiatePaymentDto): Promise<PaymentInstruction> {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const booking = await bookingRepo.findOne({ where: { id: payload.bookingId } });
+    if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+    if (booking.status !== 'PENDING') throw new BadRequestException('Booking bukan PENDING');
+
+    booking.paymentMethod = payload.method as PaymentMethod;
+    await bookingRepo.save(booking);
+
+    if (payload.method === 'BANK_TRANSFER') {
+      const bankName = process.env.COMPANY_BANK_NAME;
+      const bankAccount = process.env.COMPANY_BANK_ACCOUNT;
+      const bankAccountName = process.env.COMPANY_BANK_ACCOUNT_NAME;
+      if (!bankName || !bankAccount || !bankAccountName) {
+        throw new BadRequestException('Rekening perusahaan belum dikonfigurasi');
+      }
+      return {
+        method: 'BANK_TRANSFER',
+        bankName,
+        bankAccount,
+        bankAccountName,
+        bookingId: booking.id,
+        amount: booking.totalPrice,
+        status: booking.status,
+      };
     }
 
-    const booking = await this.dataSource.getRepository(Booking).findOne({
-      where: { id: payload.order_id },
-    });
-    if (!booking) {
-      throw new BadRequestException('Booking tidak ditemukan');
+    if (payload.method === 'QRIS') {
+      const qrisImageUrl = process.env.QRIS_IMAGE_URL;
+      if (!qrisImageUrl) throw new BadRequestException('QRIS belum dikonfigurasi');
+      return {
+        method: 'QRIS',
+        qrisImageUrl,
+        bookingId: booking.id,
+        amount: booking.totalPrice,
+        status: booking.status,
+      };
     }
 
-    if (booking.status === 'PAID') {
-      return booking;
-    }
-
-    const payableStatuses = ['settlement', 'capture'];
-    if (!payableStatuses.includes(payload.transaction_status)) {
-      throw new BadRequestException('Status transaksi belum settle');
-    }
-
-    booking.status = 'PAID';
-    return this.dataSource.getRepository(Booking).save(booking);
+    throw new BadRequestException('Metode pembayaran tidak dikenal');
   }
 
-  private isSignatureValid(payload: MidtransWebhookDto): boolean {
-    const serverKey = process.env.MIDTRANS_SERVER_KEY;
-    if (!serverKey) return false;
-    const toSign = `${payload.order_id}${payload.status_code}${payload.gross_amount}${serverKey}`;
-    const signature = crypto.createHash('sha512').update(toSign).digest('hex');
-    return signature === payload.signature_key;
+  async confirmPayment(payload: ConfirmPaymentDto): Promise<Booking> {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const booking = await bookingRepo.findOne({ where: { id: payload.bookingId } });
+    if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+    if (booking.status === 'PAID') return booking;
+    if (booking.status !== 'PENDING') throw new BadRequestException('Status booking tidak valid');
+
+    booking.status = 'PAID';
+    // Catat reference jika perlu di kemudian hari
+    return bookingRepo.save(booking);
+  }
+
+  async uploadProof(payload: UploadProofDto): Promise<Booking> {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const booking = await bookingRepo.findOne({ where: { id: payload.bookingId } });
+    if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+    booking.paymentProofUrl = payload.proofUrl;
+    return bookingRepo.save(booking);
   }
 }

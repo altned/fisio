@@ -31,6 +31,12 @@ Aplikasi on-demand fisioterapi home-visit untuk Pasien (Mobile), Terapis (Mobile
 - Wallet display: balance nyata tidak pernah di-reset; monthly stats hanya via query (visual reset).
 - Admin transfer/withdraw: DEBIT wajib `admin_note` dan terlihat di riwayat terapis.
 
+### F. Pembayaran (Revisi)
+- Metode: Transfer bank ke rekening perusahaan dan QRIS statis (gambar QR).
+- Alur: Sistem menghasilkan instruksi pembayaran (nomor rekening / URL gambar QR) yang bisa di-copy; status booking `PENDING`; admin menandai `PAID` setelah verifikasi mutasi/manual reconciliation.
+- User dapat unggah bukti bayar (URL gambar) untuk membantu verifikasi admin.
+- Tidak ada Midtrans/webhook; pembayaran bersifat offline/settlement manual.
+
 ### D. Review & Rating
 - Dashboard menampilkan `THERAPISTS.average_rating` dan `total_reviews` sebagai cache.
 - Submit review harus atomik: insert REVIEWS + update cached rating/count.
