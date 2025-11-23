@@ -9,3 +9,11 @@
   - `POST /payment/confirm` (admin menandai PAID).
 - Skema booking: tambah `payment_method`, `payment_proof_url`; migrasi `1710000001000-add-payment-columns.ts`.
 - Hapus webhook Midtrans dan DTO terkait.
+
+## 2024-03-XX (Refund & Acceptance)
+- Tambah kolom refund di bookings: `refund_status` (NONE/PENDING/COMPLETED), `refund_reference`, `refund_note`, `refunded_at`; migrasi `1710000003000-add-refund-columns.ts`.
+- Tambah kolom acceptance: `booking_type`, `therapist_respond_by`, `therapist_accepted_at`, status `CANCELLED`; migrasi `1710000002000-add-booking-acceptance.ts`.
+- Terapis accept/decline:
+  - `POST /bookings/accept`
+  - `POST /bookings/decline` → set status CANCELLED + refund_status PENDING.
+- Admin refund completion: `POST /admin/bookings/refund` (isi reference/note, set refund_status=COMPLETED).

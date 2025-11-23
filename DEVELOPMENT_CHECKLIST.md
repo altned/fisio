@@ -21,9 +21,8 @@
   - [x] Hitung snapshot pricing (admin_fee_amount, therapist_net_total) pada booking create.
 
 - [ ] **Phase 3 — Payment & Acceptance**
-  - [x] Integrasi Midtrans: webhook validator (signature) dan update status booking ke PAID saat settle.
-  - [ ] Create charge/payment initiation.
-  - [ ] Terapis accept/timeout: 5m untuk instant, 30m regular; path refund jika timeout/decline.
+  - [x] Pembayaran manual: instruksi rekening/QRIS, upload bukti bayar, konfirmasi admin set PAID.
+  - [x] Terapis accept/timeout: 5m instant, 30m regular; decline/timeout → booking CANCELLED + refund_status PENDING.
   - [ ] Aktivasi chat pada sesi terjadwal; set chat_locked_at baseline.
 
 - [ ] **Phase 4 — Session Lifecycle**

@@ -12,8 +12,10 @@ import { Session } from './session.entity';
 import { Therapist } from './therapist.entity';
 import { User } from './user.entity';
 
-export type BookingStatus = 'PENDING' | 'PAID' | 'COMPLETED';
+export type BookingStatus = 'PENDING' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 export type PaymentMethod = 'BANK_TRANSFER' | 'QRIS';
+export type BookingType = 'REGULAR' | 'INSTANT';
+export type RefundStatus = 'NONE' | 'PENDING' | 'COMPLETED';
 
 @Entity({ name: 'bookings' })
 export class Booking {
@@ -49,6 +51,27 @@ export class Booking {
 
   @Column({ name: 'payment_proof_url', type: 'text', nullable: true })
   paymentProofUrl?: string | null;
+
+  @Column({ name: 'booking_type', type: 'varchar', length: 20, default: 'REGULAR' })
+  bookingType!: BookingType;
+
+  @Column({ name: 'therapist_respond_by', type: 'timestamp with time zone', nullable: true })
+  therapistRespondBy!: Date | null;
+
+  @Column({ name: 'therapist_accepted_at', type: 'timestamp with time zone', nullable: true })
+  therapistAcceptedAt!: Date | null;
+
+  @Column({ name: 'refund_status', type: 'varchar', length: 20, default: 'NONE' })
+  refundStatus!: RefundStatus;
+
+  @Column({ name: 'refund_reference', type: 'varchar', length: 160, nullable: true })
+  refundReference!: string | null;
+
+  @Column({ name: 'refund_note', type: 'text', nullable: true })
+  refundNote!: string | null;
+
+  @Column({ name: 'refunded_at', type: 'timestamp with time zone', nullable: true })
+  refundedAt!: Date | null;
 
   @Column({ type: 'varchar', length: 20, default: 'PENDING' })
   status!: BookingStatus;

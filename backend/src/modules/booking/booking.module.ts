@@ -14,5 +14,6 @@ import { SlotService } from './slot.service';
   imports: [TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet])],
   controllers: [BookingController],
   providers: [BookingService, SlotService],
+  exports: [BookingService],
 })
 export class BookingModule {}

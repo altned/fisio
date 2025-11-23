@@ -1,15 +1,17 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { Booking } from '../../domain/entities/booking.entity';
+import { Booking, BookingType } from '../../domain/entities/booking.entity';
 import { Package } from '../../domain/entities/package.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { Therapist } from '../../domain/entities/therapist.entity';
 import { User } from '../../domain/entities/user.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { RespondBookingDto } from './dto/respond-booking.dto';
 import { SlotService } from './slot.service';
 
 const SCHEDULABLE_STATUSES: Session['status'][] = ['SCHEDULED', 'PENDING_SCHEDULING'];
+const CHAT_LOCK_BUFFER_HOURS = 24;
 
 @Injectable()
 export class BookingService {
@@ -53,6 +55,7 @@ export class BookingService {
         totalPrice: input.totalPrice,
         adminFeeAmount: input.adminFeeAmount,
         therapistNetTotal: input.therapistNetTotal,
+        bookingType: input.bookingType,
         status: 'PENDING',
         chatLockedAt: null,
       });
@@ -112,5 +115,69 @@ export class BookingService {
     if (existing) return existing;
     const wallet = walletRepo.create({ therapist, balance: '0' });
     return walletRepo.save(wallet);
+  }
+
+  private setChatLockForFirstSession(booking: Booking, firstSession: Session) {
+    if (!firstSession.scheduledAt) return booking;
+    const lockTime = new Date(firstSession.scheduledAt.getTime() + CHAT_LOCK_BUFFER_HOURS * 3600 * 1000);
+    booking.chatLockedAt = lockTime;
+    return booking;
+  }
+
+  async acceptBooking(input: RespondBookingDto): Promise<Booking> {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const sessionRepo = this.dataSource.getRepository(Session);
+
+    return this.dataSource.transaction(async (manager) => {
+      const booking = await manager.getRepository(Booking).findOne({
+        where: { id: input.bookingId },
+        relations: ['therapist'],
+      });
+      if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+      if (booking.therapist.id !== input.therapistId) {
+        throw new BadRequestException('Terapis tidak sesuai');
+      }
+      if (booking.status !== 'PAID') throw new BadRequestException('Booking belum dibayar atau sudah selesai');
+      if (booking.therapistRespondBy && new Date() > booking.therapistRespondBy) {
+        booking.status = 'CANCELLED';
+        await manager.getRepository(Booking).save(booking);
+        throw new BadRequestException('Waktu respon terapis habis');
+      }
+
+      booking.therapistAcceptedAt = new Date();
+      const firstSession = await sessionRepo.findOne({
+        where: { booking: { id: booking.id }, sequenceOrder: 1 },
+      });
+      if (firstSession) {
+        this.setChatLockForFirstSession(booking, firstSession);
+      }
+
+      return manager.getRepository(Booking).save(booking);
+    });
+  }
+
+  async declineBooking(input: RespondBookingDto): Promise<Booking> {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    return this.dataSource.transaction(async (manager) => {
+      const booking = await manager.getRepository(Booking).findOne({
+        where: { id: input.bookingId },
+        relations: ['therapist'],
+      });
+      if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+      if (booking.therapist.id !== input.therapistId) {
+        throw new BadRequestException('Terapis tidak sesuai');
+      }
+      if (booking.status !== 'PAID') throw new BadRequestException('Booking belum dibayar atau sudah selesai');
+
+      booking.status = 'CANCELLED';
+      booking.refundStatus = 'PENDING';
+      return manager.getRepository(Booking).save(booking);
+    });
+  }
+
+  computeRespondBy(bookingType: BookingType): Date {
+    const now = new Date();
+    const minutes = bookingType === 'INSTANT' ? 5 : 30;
+    return new Date(now.getTime() + minutes * 60 * 1000);
   }
 }

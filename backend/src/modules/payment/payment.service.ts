@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Booking, PaymentMethod } from '../../domain/entities/booking.entity';
+import { BookingService } from '../booking/booking.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { UploadProofDto } from './dto/upload-proof.dto';
@@ -18,7 +19,10 @@ type PaymentInstruction = {
 
 @Injectable()
 export class PaymentService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly bookingService: BookingService,
+  ) {}
 
   async initiatePayment(payload: InitiatePaymentDto): Promise<PaymentInstruction> {
     const bookingRepo = this.dataSource.getRepository(Booking);
@@ -70,6 +74,7 @@ export class PaymentService {
     if (booking.status !== 'PENDING') throw new BadRequestException('Status booking tidak valid');
 
     booking.status = 'PAID';
+    booking.therapistRespondBy = this.bookingService.computeRespondBy(booking.bookingType);
     // Catat reference jika perlu di kemudian hari
     return bookingRepo.save(booking);
   }

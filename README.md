@@ -45,3 +45,10 @@
   - `POST /payment/initiate` (pilih metode BANK_TRANSFER/QRIS, kembalikan instruksi rekening/QRIS)
   - `POST /payment/proof` (kirim URL bukti bayar)
   - `POST /payment/confirm` (admin menandai PAID setelah verifikasi)
+
+## Acceptance & Refund
+- Acceptance/decline terapis:
+  - `POST /bookings/accept` (therapistId, bookingId) — SLA respon: 5 menit (instant), 30 menit (regular).
+  - `POST /bookings/decline` — booking di-set CANCELLED + refund_status PENDING.
+- Admin menyelesaikan refund:
+  - `POST /admin/bookings/refund` (bookingId, adminId, refundReference?, refundNote?) → set refund_status=COMPLETED, catat reference/note.

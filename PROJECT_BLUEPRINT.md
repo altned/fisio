@@ -36,6 +36,7 @@ Aplikasi on-demand fisioterapi home-visit untuk Pasien (Mobile), Terapis (Mobile
 - Alur: Sistem menghasilkan instruksi pembayaran (nomor rekening / URL gambar QR) yang bisa di-copy; status booking `PENDING`; admin menandai `PAID` setelah verifikasi mutasi/manual reconciliation.
 - User dapat unggah bukti bayar (URL gambar) untuk membantu verifikasi admin.
 - Tidak ada Midtrans/webhook; pembayaran bersifat offline/settlement manual.
+- Refund: Decline/timeout terapis → booking `CANCELLED`, `refund_status=PENDING`; admin transfer balik manual dan tandai `refund_status=COMPLETED` dengan reference/note.
 
 ### D. Review & Rating
 - Dashboard menampilkan `THERAPISTS.average_rating` dan `total_reviews` sebagai cache.

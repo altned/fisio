@@ -9,6 +9,7 @@ import { User } from '../domain/entities/user.entity';
 import { Wallet } from '../domain/entities/wallet.entity';
 import { WalletTransaction } from '../domain/entities/wallet-transaction.entity';
 import { BookingModule } from './booking/booking.module';
+import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
@@ -23,6 +24,7 @@ import { AppService } from '../services/app.service';
       autoLoadEntities: true,
     }),
     BookingModule,
+    AdminModule,
     PaymentModule,
   ],
   controllers: [AppController],
