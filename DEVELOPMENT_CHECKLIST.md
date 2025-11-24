@@ -32,10 +32,10 @@
   - [x] Chat lock otomatis 24h setelah sesi terakhir (update chat_locked_at).
 
 - [ ] **Phase 5 — Wallet & Revenue Split**
-  - [ ] Payout pro-rata: unit = therapist_net_total / total_sessions; trigger pada COMPLETED/FORFEITED.
-  - [ ] Implement topUpWallet dalam 1 DB transaction: update WALLETS.balance + WALLET_TRANSACTIONS + set SESSIONS.is_payout_distributed (idempoten).
-  - [ ] Kategori transaksi: SESSION_FEE, FORFEIT_COMPENSATION, WITHDRAWAL; DEBIT wajib admin_note.
-  - [ ] Monthly stats query: SUM(amount) WHERE type='CREDIT' AND month(created_at)=current_month (tanpa reset tabel).
+  - [x] Payout pro-rata: unit = therapist_net_total / total_sessions; trigger pada COMPLETED/FORFEITED.
+  - [x] Implement topUpWallet dalam 1 DB transaction: update WALLETS.balance + WALLET_TRANSACTIONS + set SESSIONS.is_payout_distributed (idempoten).
+  - [x] Kategori transaksi: SESSION_FEE, FORFEIT_COMPENSATION, WITHDRAWAL; DEBIT wajib admin_note.
+  - [x] Monthly stats query: SUM(amount) WHERE type='CREDIT' AND month(created_at)=current_month (tanpa reset tabel).
 
 - [ ] **Phase 6 — Admin Ops**
   - [ ] Endpoint PATCH /admin/bookings/:id/swap-therapist: update locked_therapist di BOOKINGS + therapist_id di SESSIONS (pending/scheduled), plus notifikasi ke pasien/terapis lama-baru.

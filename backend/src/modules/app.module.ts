@@ -11,6 +11,7 @@ import { WalletTransaction } from '../domain/entities/wallet-transaction.entity'
 import { BookingModule } from './booking/booking.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
+import { WalletModule } from './wallet/wallet.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -26,6 +27,7 @@ import { AppService } from '../services/app.service';
     BookingModule,
     AdminModule,
     PaymentModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [AppService],
