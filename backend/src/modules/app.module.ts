@@ -12,6 +12,7 @@ import { BookingModule } from './booking/booking.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
 import { WalletModule } from './wallet/wallet.module';
+import { ReviewModule } from './review/review.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -28,6 +29,7 @@ import { AppService } from '../services/app.service';
     AdminModule,
     PaymentModule,
     WalletModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [AppService],

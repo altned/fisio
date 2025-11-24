@@ -45,7 +45,7 @@
   - [x] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
 
 - [ ] **Phase 7 — Review & Rating**
-  - [ ] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).
+  - [x] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).
   - [ ] Expose rating cached di list/detil terapis; mekanisme satu review per booking.
 
 - [ ] **Phase 8 — Notification & Chat**
