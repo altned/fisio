@@ -26,10 +26,10 @@
   - [x] Aktivasi chat baseline: set chat_locked_at = scheduled_at + 24h pada payment confirm/accept.
 
 - [ ] **Phase 4 — Session Lifecycle**
-  - [ ] Transisi status: WAITING/ SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.
-  - [ ] Multi-sesi: sisa kuota jadi PENDING_SCHEDULING; enforce locked address/terapis.
-  - [ ] Expiry: booking usia >30 hari → sesi PENDING_SCHEDULING menjadi EXPIRED tanpa payout.
-  - [ ] Chat lock otomatis 24h setelah sesi terakhir (update chat_locked_at).
+  - [x] Transisi status: SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.
+  - [x] Multi-sesi: sisa kuota jadi PENDING_SCHEDULING; enforce locked address/terapis.
+  - [x] Expiry: booking usia >30 hari → sesi PENDING_SCHEDULING menjadi EXPIRED tanpa payout (endpoint expire).
+  - [x] Chat lock otomatis 24h setelah sesi terakhir (update chat_locked_at).
 
 - [ ] **Phase 5 — Wallet & Revenue Split**
   - [ ] Payout pro-rata: unit = therapist_net_total / total_sessions; trigger pada COMPLETED/FORFEITED.

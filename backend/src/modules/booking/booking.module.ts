@@ -9,11 +9,13 @@ import { Wallet } from '../../domain/entities/wallet.entity';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { SlotService } from './slot.service';
+import { SessionController } from './session.controller';
+import { SessionService } from './session.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet])],
-  controllers: [BookingController],
-  providers: [BookingService, SlotService],
+  controllers: [BookingController, SessionController],
+  providers: [BookingService, SlotService, SessionService],
   exports: [BookingService],
 })
 export class BookingModule {}
