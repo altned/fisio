@@ -38,9 +38,11 @@
   - [x] Monthly stats query: SUM(amount) WHERE type='CREDIT' AND month(created_at)=current_month (tanpa reset tabel).
 
 - [ ] **Phase 6 — Admin Ops**
-  - [ ] Endpoint PATCH /admin/bookings/:id/swap-therapist: update locked_therapist di BOOKINGS + therapist_id di SESSIONS (pending/scheduled), plus notifikasi ke pasien/terapis lama-baru.
-  - [ ] Admin withdraw/transfer manual: form dengan admin_note wajib; tampilkan admin_note di riwayat terapis.
-  - [ ] Refund flow untuk decline/timeout; audit log aksi finansial.
+  - [x] Endpoint PATCH /admin/bookings/:id/swap-therapist: update locked_therapist di BOOKINGS + therapist_id di SESSIONS (pending/scheduled).
+  - [x] Admin withdraw/transfer manual: form dengan admin_note wajib; tampilkan admin_note di riwayat terapis.
+  - [x] Refund flow untuk decline/timeout; audit log aksi finansial (data tersimpan via refund_status/reference/note).
+  - [ ] Notifikasi swap therapist ke pasien & terapis lama/baru.
+  - [ ] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
 
 - [ ] **Phase 7 — Review & Rating**
   - [ ] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).
