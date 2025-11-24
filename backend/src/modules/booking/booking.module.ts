@@ -12,11 +12,12 @@ import { BookingService } from './booking.service';
 import { SlotService } from './slot.service';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
+import { TimeoutService } from './timeout.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet]), WalletModule],
   controllers: [BookingController, SessionController],
-  providers: [BookingService, SlotService, SessionService],
+  providers: [BookingService, SlotService, SessionService, TimeoutService],
   exports: [BookingService],
 })
 export class BookingModule {}

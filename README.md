@@ -52,3 +52,7 @@
   - `POST /bookings/decline` — booking di-set CANCELLED + refund_status PENDING.
 - Admin menyelesaikan refund:
   - `POST /admin/bookings/refund` (bookingId, adminId, refundReference?, refundNote?) → set refund_status=COMPLETED, catat reference/note.
+
+## Admin Ops
+- Swap terapis: `PATCH /admin/bookings/:id/swap-therapist` (body: newTherapistId) — update booking + sesi pending/scheduled.
+- Withdraw manual ke terapis: `POST /admin/wallets/:id/withdraw` (amount, adminNote wajib, catat transaksi DEBIT kategori WITHDRAWAL).

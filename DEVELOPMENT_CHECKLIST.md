@@ -42,7 +42,7 @@
   - [x] Admin withdraw/transfer manual: form dengan admin_note wajib; tampilkan admin_note di riwayat terapis.
   - [x] Refund flow untuk decline/timeout; audit log aksi finansial (data tersimpan via refund_status/reference/note).
   - [ ] Notifikasi swap therapist ke pasien & terapis lama/baru.
-  - [ ] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
+  - [x] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
 
 - [ ] **Phase 7 — Review & Rating**
   - [ ] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).

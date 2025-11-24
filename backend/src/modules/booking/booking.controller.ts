@@ -3,10 +3,14 @@ import { Booking } from '../../domain/entities/booking.entity';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
+import { TimeoutService } from './timeout.service';
 
 @Controller('bookings')
 export class BookingController {
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(
+    private readonly bookingService: BookingService,
+    private readonly timeoutService: TimeoutService,
+  ) {}
 
   @Post()
   create(@Body() body: CreateBookingDto): Promise<Booking> {
@@ -24,5 +28,10 @@ export class BookingController {
   @Post('decline')
   decline(@Body() body: RespondBookingDto) {
     return this.bookingService.declineBooking(body);
+  }
+
+  @Post('timeout/run')
+  runTimeouts() {
+    return this.timeoutService.handleTherapistTimeouts();
   }
 }

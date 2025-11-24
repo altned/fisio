@@ -17,3 +17,12 @@
   - `POST /bookings/accept`
   - `POST /bookings/decline` → set status CANCELLED + refund_status PENDING.
 - Admin refund completion: `POST /admin/bookings/refund` (isi reference/note, set refund_status=COMPLETED).
+
+## 2024-03-XX (Wallet & Admin Ops)
+- Payout pro-rata per sesi COMPLETED/FORFEITED dengan idempotensi `is_payout_distributed`; kategori SESSION_FEE/FORFEIT_COMPENSATION.
+- Wallet stats bulanan: `GET /wallets/:id/stats/monthly`.
+- Admin withdraw manual: `POST /admin/wallets/:id/withdraw` (wajib admin_note).
+- Swap therapist: `PATCH /admin/bookings/:id/swap-therapist` (update booking + sesi pending/scheduled).
+
+## 2024-03-XX (Therapist Timeout)
+- Endpoint `POST /bookings/timeout/run` untuk auto-timeout terapis (PAID & tidak respon sampai therapist_respond_by) → booking CANCELLED + refund_status PENDING.
