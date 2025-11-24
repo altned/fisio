@@ -117,10 +117,13 @@ export class BookingService {
     return walletRepo.save(wallet);
   }
 
+  computeChatLockAt(scheduledAt: Date): Date {
+    return new Date(scheduledAt.getTime() + CHAT_LOCK_BUFFER_HOURS * 3600 * 1000);
+  }
+
   private setChatLockForFirstSession(booking: Booking, firstSession: Session) {
     if (!firstSession.scheduledAt) return booking;
-    const lockTime = new Date(firstSession.scheduledAt.getTime() + CHAT_LOCK_BUFFER_HOURS * 3600 * 1000);
-    booking.chatLockedAt = lockTime;
+    booking.chatLockedAt = this.computeChatLockAt(firstSession.scheduledAt);
     return booking;
   }
 

@@ -20,10 +20,10 @@
   - [x] Profile guard: tolak booking jika user.is_profile_complete = false.
   - [x] Hitung snapshot pricing (admin_fee_amount, therapist_net_total) pada booking create.
 
-- [ ] **Phase 3 — Payment & Acceptance**
+- [x] **Phase 3 — Payment & Acceptance**
   - [x] Pembayaran manual: instruksi rekening/QRIS, upload bukti bayar, konfirmasi admin set PAID.
   - [x] Terapis accept/timeout: 5m instant, 30m regular; decline/timeout → booking CANCELLED + refund_status PENDING.
-  - [ ] Aktivasi chat pada sesi terjadwal; set chat_locked_at baseline.
+  - [x] Aktivasi chat baseline: set chat_locked_at = scheduled_at + 24h pada payment confirm/accept.
 
 - [ ] **Phase 4 — Session Lifecycle**
   - [ ] Transisi status: WAITING/ SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.

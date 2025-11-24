@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Booking, PaymentMethod } from '../../domain/entities/booking.entity';
+import { Session } from '../../domain/entities/session.entity';
 import { BookingService } from '../booking/booking.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
@@ -68,6 +69,7 @@ export class PaymentService {
 
   async confirmPayment(payload: ConfirmPaymentDto): Promise<Booking> {
     const bookingRepo = this.dataSource.getRepository(Booking);
+    const sessionRepo = this.dataSource.getRepository(Session);
     const booking = await bookingRepo.findOne({ where: { id: payload.bookingId } });
     if (!booking) throw new BadRequestException('Booking tidak ditemukan');
     if (booking.status === 'PAID') return booking;
@@ -75,6 +77,14 @@ export class PaymentService {
 
     booking.status = 'PAID';
     booking.therapistRespondBy = this.bookingService.computeRespondBy(booking.bookingType);
+    if (!booking.chatLockedAt) {
+      const firstSession = await sessionRepo.findOne({
+        where: { booking: { id: booking.id }, sequenceOrder: 1 },
+      });
+      if (firstSession?.scheduledAt) {
+        booking.chatLockedAt = this.bookingService.computeChatLockAt(firstSession.scheduledAt);
+      }
+    }
     // Catat reference jika perlu di kemudian hari
     return bookingRepo.save(booking);
   }
