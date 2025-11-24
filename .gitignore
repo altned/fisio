@@ -23,3 +23,6 @@ coverage
 # Editor
 .idea
 .vscode
+
+# Secrets
+backend/firebase-service-account.json

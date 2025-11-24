@@ -41,7 +41,7 @@
   - [x] Endpoint PATCH /admin/bookings/:id/swap-therapist: update locked_therapist di BOOKINGS + therapist_id di SESSIONS (pending/scheduled).
   - [x] Admin withdraw/transfer manual: form dengan admin_note wajib; tampilkan admin_note di riwayat terapis.
   - [x] Refund flow untuk decline/timeout; audit log aksi finansial (data tersimpan via refund_status/reference/note).
-  - [ ] Notifikasi swap therapist ke pasien & terapis lama/baru.
+  - [x] Notifikasi swap therapist (stub service, siap integrasi ke push/WA).
   - [x] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
 
 - [ ] **Phase 7 — Review & Rating**
@@ -49,9 +49,9 @@
   - [ ] Expose rating cached di list/detil terapis; mekanisme satu review per booking.
 
 - [ ] **Phase 8 — Notification & Chat**
-  - [ ] Event bus + listener (BookingAccepted, InstantRequest, PayoutSuccess).
-  - [ ] Push cepat/urgent ke terapis untuk instant booking; WA/FCM fallback jika perlu.
-  - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat.
+  - [x] Event hooks/stub notification (InstantRequest, BookingAccepted/Declined/Timeout, PayoutSuccess, SwapTherapist).
+  - [ ] Integrasi push cepat/urgent ke terapis untuk instant booking; WA/FCM fallback.
+  - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat (handler sudah ada; integrasi chat service pending).
 
 - [ ] **Phase 9 — Automation (Cron/Jobs)**
   - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.

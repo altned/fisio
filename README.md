@@ -56,3 +56,9 @@
 ## Admin Ops
 - Swap terapis: `PATCH /admin/bookings/:id/swap-therapist` (body: newTherapistId) — update booking + sesi pending/scheduled.
 - Withdraw manual ke terapis: `POST /admin/wallets/:id/withdraw` (amount, adminNote wajib, catat transaksi DEBIT kategori WITHDRAWAL).
+
+## Notifikasi
+- Siapkan FCM:
+  - Letakkan service account JSON di `backend/firebase-service-account.json` (jangan di-commit).
+  - Env: `FIREBASE_CREDENTIALS_PATH=./firebase-service-account.json`
+- Event hooks tersedia (instant booking, accept/decline/timeout, payout, swap therapist). Jika device token diberikan di payload, FCM akan dikirim; jika tidak, fallback log.
