@@ -15,6 +15,7 @@ import { WalletModule } from './wallet/wallet.module';
 import { ReviewModule } from './review/review.module';
 import { NotificationModule } from './notification/notification.module';
 import { ChatModule } from './chat/chat.module';
+import { JobModule } from './job/job.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -34,6 +35,7 @@ import { AppService } from '../services/app.service';
     ReviewModule,
     NotificationModule,
     ChatModule,
+    JobModule,
   ],
   controllers: [AppController],
   providers: [AppService],

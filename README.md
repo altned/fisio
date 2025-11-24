@@ -62,3 +62,11 @@
   - Letakkan service account JSON di `backend/firebase-service-account.json` (jangan di-commit).
   - Env: `FIREBASE_CREDENTIALS_PATH=./firebase-service-account.json`
 - Event hooks tersedia (instant booking, accept/decline/timeout, payout, swap therapist). Jika device token diberikan di payload, FCM akan dikirim; jika tidak, fallback log.
+
+## Cron / Jobs
+- Menggunakan BullMQ (Redis): pastikan `REDIS_URL` sudah diset.
+- Queue & processor:
+  - `booking-expiry`: set sesi PENDING_SCHEDULING → EXPIRED jika booking >30 hari.
+  - `chat-lock`: set `is_chat_active=false` jika `chat_locked_at` lewat.
+  - `therapist-timeout`: batalkan booking PAID yang melewati therapistRespondBy (refund pending).
+- Scheduler belum diset di sini; jalankan enqueue manual atau tambahkan worker sesuai kebutuhan infra.
