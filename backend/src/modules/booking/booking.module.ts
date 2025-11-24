@@ -13,11 +13,12 @@ import { SlotService } from './slot.service';
 import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
 import { TimeoutService } from './timeout.service';
+import { ChatLockService } from './chat-lock.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet]), WalletModule],
   controllers: [BookingController, SessionController],
-  providers: [BookingService, SlotService, SessionService, TimeoutService],
+  providers: [BookingService, SlotService, SessionService, TimeoutService, ChatLockService],
   exports: [BookingService],
 })
 export class BookingModule {}

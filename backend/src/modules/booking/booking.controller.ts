@@ -4,12 +4,16 @@ import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
 import { TimeoutService } from './timeout.service';
+import { ChatLockService } from './chat-lock.service';
+import { SessionService } from './session.service';
 
 @Controller('bookings')
 export class BookingController {
   constructor(
     private readonly bookingService: BookingService,
     private readonly timeoutService: TimeoutService,
+    private readonly chatLockService: ChatLockService,
+    private readonly sessionService: SessionService,
   ) {}
 
   @Post()
@@ -33,5 +37,15 @@ export class BookingController {
   @Post('timeout/run')
   runTimeouts() {
     return this.timeoutService.handleTherapistTimeouts();
+  }
+
+  @Post('expire/run')
+  expirePendingSessions() {
+    return this.sessionService.expirePendingSessions();
+  }
+
+  @Post('chat-lock/run')
+  runChatLock() {
+    return this.chatLockService.lockChats();
   }
 }

@@ -61,6 +61,9 @@ export class Booking {
   @Column({ name: 'therapist_accepted_at', type: 'timestamp with time zone', nullable: true })
   therapistAcceptedAt!: Date | null;
 
+  @Column({ name: 'is_chat_active', type: 'boolean', default: true })
+  isChatActive!: boolean;
+
   @Column({ name: 'refund_status', type: 'varchar', length: 20, default: 'NONE' })
   refundStatus!: RefundStatus;
 

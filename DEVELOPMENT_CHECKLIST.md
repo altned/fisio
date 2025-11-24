@@ -54,8 +54,8 @@
   - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat.
 
 - [ ] **Phase 9 — Automation (Cron/Jobs)**
-  - [ ] handlePackageExpiry (harian 00:00): set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
-  - [ ] handleChatLock (tiap 15 menit): set is_chat_active=false jika chat_locked_at < now.
+  - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
+  - [x] handleChatLock: endpoint `/bookings/chat-lock/run` set is_chat_active=false jika chat_locked_at < now.
   - [ ] Job retry payout/webhook failure + monitoring/alerting.
 
 - [ ] **Phase 10 — QA & Hardening**
