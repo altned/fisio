@@ -4,11 +4,15 @@ import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { WalletTransaction, WalletTransactionCategory } from '../../domain/entities/wallet-transaction.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { NotificationService } from '../notification/notification.service';
 import { WalletStats } from './dto/wallet-stats.dto';
 
 @Injectable()
 export class WalletService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async payoutSession(sessionId: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
@@ -65,6 +69,13 @@ export class WalletService {
       await walletRepo.save(wallet);
       await sessionRepo.save(session);
       await txRepo.save(tx);
+
+      await this.notificationService.notifyPayoutSuccess({
+        therapistId: booking.therapist.id,
+        title: 'Payout masuk',
+        body: `Payout sesi ${session.sequenceOrder} telah masuk`,
+        meta: { bookingId: booking.id, sessionId: session.id, amount },
+      });
     });
   }
 

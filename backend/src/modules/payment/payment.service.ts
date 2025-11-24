@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Booking, PaymentMethod } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
+import { NotificationService } from '../notification/notification.service';
 import { BookingService } from '../booking/booking.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
@@ -23,6 +24,7 @@ export class PaymentService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly bookingService: BookingService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async initiatePayment(payload: InitiatePaymentDto): Promise<PaymentInstruction> {
@@ -86,7 +88,14 @@ export class PaymentService {
       }
     }
     // Catat reference jika perlu di kemudian hari
-    return bookingRepo.save(booking);
+    const saved = await bookingRepo.save(booking);
+    await this.notificationService.notifyBookingAccepted({
+      therapistId: booking.therapist.id,
+      title: 'Pembayaran terkonfirmasi',
+      body: 'Booking siap direspons',
+      meta: { bookingId: booking.id },
+    });
+    return saved;
   }
 
   async uploadProof(payload: UploadProofDto): Promise<Booking> {

@@ -6,13 +6,17 @@ import { Session } from '../../domain/entities/session.entity';
 import { Therapist } from '../../domain/entities/therapist.entity';
 import { WalletTransaction } from '../../domain/entities/wallet-transaction.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { NotificationService } from '../notification/notification.service';
 import { CompleteRefundDto } from './dto/complete-refund.dto';
 import { SwapTherapistDto } from './dto/swap-therapist.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async completeRefund(input: CompleteRefundDto): Promise<Booking> {
     const repo = this.dataSource.getRepository(Booking);
@@ -52,6 +56,13 @@ export class AdminService {
         .where('booking_id = :bookingId', { bookingId: booking.id })
         .andWhere('status IN (:...statuses)', { statuses: ['PENDING_SCHEDULING', 'SCHEDULED'] })
         .execute();
+
+      await this.notificationService.notifySwapTherapist({
+        therapistId: newTherapist.id,
+        title: 'Booking diperbarui',
+        body: 'Anda ditugaskan ke booking baru',
+        meta: { bookingId: booking.id },
+      });
 
       return bookingRepo.save(booking);
     });

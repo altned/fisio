@@ -6,6 +6,7 @@ import { Session } from '../../domain/entities/session.entity';
 import { Therapist } from '../../domain/entities/therapist.entity';
 import { User } from '../../domain/entities/user.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { NotificationService } from '../notification/notification.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
 import { SlotService } from './slot.service';
@@ -15,7 +16,11 @@ const CHAT_LOCK_BUFFER_HOURS = 24;
 
 @Injectable()
 export class BookingService {
-  constructor(private readonly dataSource: DataSource, private readonly slotService: SlotService) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly slotService: SlotService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async createBooking(input: CreateBookingDto): Promise<Booking> {
     this.validateSlot(input);
@@ -61,6 +66,15 @@ export class BookingService {
       });
 
       const savedBooking = await bookingRepo.save(booking);
+
+      if (input.bookingType === 'INSTANT') {
+        await this.notificationService.notifyTherapistInstantBooking({
+          therapistId: therapist.id,
+          title: 'Permintaan Instan',
+          body: 'Booking instan menunggu respon Anda',
+          meta: { bookingId: savedBooking.id },
+        });
+      }
 
       const sessions: Session[] = [];
       for (let i = 0; i < sessionCount; i++) {
@@ -155,7 +169,14 @@ export class BookingService {
         this.setChatLockForFirstSession(booking, firstSession);
       }
 
-      return manager.getRepository(Booking).save(booking);
+      const saved = await manager.getRepository(Booking).save(booking);
+      await this.notificationService.notifyBookingAccepted({
+        therapistId: booking.therapist.id,
+        title: 'Booking diterima',
+        body: 'Booking telah Anda terima',
+        meta: { bookingId: booking.id },
+      });
+      return saved;
     });
   }
 
@@ -174,7 +195,14 @@ export class BookingService {
 
       booking.status = 'CANCELLED';
       booking.refundStatus = 'PENDING';
-      return manager.getRepository(Booking).save(booking);
+      const saved = await manager.getRepository(Booking).save(booking);
+      await this.notificationService.notifyBookingDeclined({
+        therapistId: booking.therapist.id,
+        title: 'Booking ditolak',
+        body: 'Booking ditolak dan menunggu refund',
+        meta: { bookingId: booking.id },
+      });
+      return saved;
     });
   }
 

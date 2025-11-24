@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
 import { WalletModule } from './wallet/wallet.module';
 import { ReviewModule } from './review/review.module';
+import { NotificationModule } from './notification/notification.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -30,6 +31,7 @@ import { AppService } from '../services/app.service';
     PaymentModule,
     WalletModule,
     ReviewModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
