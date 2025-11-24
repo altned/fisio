@@ -14,9 +14,16 @@ import { SessionController } from './session.controller';
 import { SessionService } from './session.service';
 import { TimeoutService } from './timeout.service';
 import { ChatLockService } from './chat-lock.service';
+import { NotificationModule } from '../notification/notification.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet]), WalletModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Therapist, Package, Booking, Session, Wallet]),
+    WalletModule,
+    NotificationModule,
+    ChatModule,
+  ],
   controllers: [BookingController, SessionController],
   providers: [BookingService, SlotService, SessionService, TimeoutService, ChatLockService],
   exports: [BookingService],

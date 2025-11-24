@@ -72,7 +72,10 @@ export class PaymentService {
   async confirmPayment(payload: ConfirmPaymentDto): Promise<Booking> {
     const bookingRepo = this.dataSource.getRepository(Booking);
     const sessionRepo = this.dataSource.getRepository(Session);
-    const booking = await bookingRepo.findOne({ where: { id: payload.bookingId } });
+    const booking = await bookingRepo.findOne({
+      where: { id: payload.bookingId },
+      relations: ['therapist', 'therapist.user'],
+    });
     if (!booking) throw new BadRequestException('Booking tidak ditemukan');
     if (booking.status === 'PAID') return booking;
     if (booking.status !== 'PENDING') throw new BadRequestException('Status booking tidak valid');
@@ -91,6 +94,7 @@ export class PaymentService {
     const saved = await bookingRepo.save(booking);
     await this.notificationService.notifyBookingAccepted({
       therapistId: booking.therapist.id,
+      deviceToken: booking.therapist.user?.fcmToken ?? undefined,
       title: 'Pembayaran terkonfirmasi',
       body: 'Booking siap direspons',
       meta: { bookingId: booking.id },

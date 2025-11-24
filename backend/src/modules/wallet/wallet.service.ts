@@ -33,7 +33,7 @@ export class WalletService {
 
       const booking = await bookingRepo.findOne({
         where: { id: session.booking.id },
-        relations: ['therapist'],
+        relations: ['therapist', 'therapist.user'],
       });
       if (!booking) throw new BadRequestException('Booking tidak ditemukan');
 
@@ -72,6 +72,7 @@ export class WalletService {
 
       await this.notificationService.notifyPayoutSuccess({
         therapistId: booking.therapist.id,
+        deviceToken: booking.therapist.user?.fcmToken ?? undefined,
         title: 'Payout masuk',
         body: `Payout sesi ${session.sequenceOrder} telah masuk`,
         meta: { bookingId: booking.id, sessionId: session.id, amount },

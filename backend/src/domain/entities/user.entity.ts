@@ -25,6 +25,9 @@ export class User {
   @Column({ name: 'is_profile_complete', type: 'boolean', default: false })
   isProfileComplete!: boolean;
 
+  @Column({ name: 'fcm_token', type: 'text', nullable: true })
+  fcmToken!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 

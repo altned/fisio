@@ -7,6 +7,7 @@ import { Therapist } from '../../domain/entities/therapist.entity';
 import { User } from '../../domain/entities/user.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
 import { NotificationService } from '../notification/notification.service';
+import { ChatService } from '../chat/chat.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
 import { SlotService } from './slot.service';
@@ -20,6 +21,7 @@ export class BookingService {
     private readonly dataSource: DataSource,
     private readonly slotService: SlotService,
     private readonly notificationService: NotificationService,
+    private readonly chatService: ChatService,
   ) {}
 
   async createBooking(input: CreateBookingDto): Promise<Booking> {
@@ -70,6 +72,7 @@ export class BookingService {
       if (input.bookingType === 'INSTANT') {
         await this.notificationService.notifyTherapistInstantBooking({
           therapistId: therapist.id,
+          deviceToken: therapist.user?.fcmToken ?? undefined,
           title: 'Permintaan Instan',
           body: 'Booking instan menunggu respon Anda',
           meta: { bookingId: savedBooking.id },
@@ -148,7 +151,7 @@ export class BookingService {
     return this.dataSource.transaction(async (manager) => {
       const booking = await manager.getRepository(Booking).findOne({
         where: { id: input.bookingId },
-        relations: ['therapist'],
+        relations: ['therapist', 'therapist.user'],
       });
       if (!booking) throw new BadRequestException('Booking tidak ditemukan');
       if (booking.therapist.id !== input.therapistId) {
@@ -172,10 +175,12 @@ export class BookingService {
       const saved = await manager.getRepository(Booking).save(booking);
       await this.notificationService.notifyBookingAccepted({
         therapistId: booking.therapist.id,
+        deviceToken: booking.therapist.user?.fcmToken ?? undefined,
         title: 'Booking diterima',
         body: 'Booking telah Anda terima',
         meta: { bookingId: booking.id },
       });
+      await this.chatService.openRoom(booking.id);
       return saved;
     });
   }
@@ -185,7 +190,7 @@ export class BookingService {
     return this.dataSource.transaction(async (manager) => {
       const booking = await manager.getRepository(Booking).findOne({
         where: { id: input.bookingId },
-        relations: ['therapist'],
+        relations: ['therapist', 'therapist.user'],
       });
       if (!booking) throw new BadRequestException('Booking tidak ditemukan');
       if (booking.therapist.id !== input.therapistId) {
@@ -198,6 +203,7 @@ export class BookingService {
       const saved = await manager.getRepository(Booking).save(booking);
       await this.notificationService.notifyBookingDeclined({
         therapistId: booking.therapist.id,
+        deviceToken: booking.therapist.user?.fcmToken ?? undefined,
         title: 'Booking ditolak',
         body: 'Booking ditolak dan menunggu refund',
         meta: { bookingId: booking.id },

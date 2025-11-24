@@ -14,6 +14,8 @@ export class TimeoutService {
     const bookings = await this.dataSource
       .getRepository(Booking)
       .createQueryBuilder('b')
+      .leftJoinAndSelect('b.therapist', 't')
+      .leftJoinAndSelect('t.user', 'u')
       .where('b.status = :status', { status: 'PAID' })
       .andWhere('b.therapist_respond_by IS NOT NULL')
       .andWhere('b.therapist_accepted_at IS NULL')

@@ -50,8 +50,8 @@
 
 - [ ] **Phase 8 — Notification & Chat**
   - [x] Event hooks/stub notification (InstantRequest, BookingAccepted/Declined/Timeout, PayoutSuccess, SwapTherapist).
-  - [ ] Integrasi push cepat/urgent ke terapis untuk instant booking; WA/FCM fallback.
-  - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat (handler sudah ada; integrasi chat service pending).
+  - [x] Integrasi push (FCM) via service account; fallback log; siap pakai device token user.fcm_token.
+  - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat (handler ada; integrasi chat provider pending).
 
 - [ ] **Phase 9 — Automation (Cron/Jobs)**
   - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
