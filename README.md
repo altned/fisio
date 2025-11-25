@@ -70,3 +70,7 @@
   - `chat-lock`: set `is_chat_active=false` jika `chat_locked_at` lewat.
   - `therapist-timeout`: batalkan booking PAID yang melewati therapistRespondBy (refund pending).
 - Scheduler belum diset di sini; jalankan enqueue manual atau tambahkan worker sesuai kebutuhan infra.
+
+## Testing
+- Jalankan unit test: `npm test`
+- Test yang tersedia: validasi slot/lead time, utilitas respond SLA dan chat lock time. Tambahkan test lanjutan untuk payout idempotency, forfeit/expiry, monthly stats sesuai kebutuhan.
