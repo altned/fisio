@@ -153,7 +153,7 @@ export class BookingService {
     return this.dataSource.transaction(async (manager) => {
       const booking = await manager.getRepository(Booking).findOne({
         where: { id: input.bookingId },
-        relations: ['therapist', 'therapist.user'],
+        relations: ['therapist', 'therapist.user', 'user'],
       });
       if (!booking) throw new BadRequestException('Booking tidak ditemukan');
       if (booking.therapist.id !== input.therapistId) {
@@ -180,6 +180,13 @@ export class BookingService {
         deviceToken: booking.therapist.user?.fcmToken ?? undefined,
         title: 'Booking diterima',
         body: 'Booking telah Anda terima',
+        meta: { bookingId: booking.id },
+      });
+      await this.notificationService.notifyBookingAccepted({
+        userId: booking.user.id,
+        deviceToken: booking.user?.fcmToken ?? undefined,
+        title: 'Booking diterima',
+        body: 'Terapis Anda menerima booking',
         meta: { bookingId: booking.id },
       });
       await this.chatService.openRoom(booking.id);
