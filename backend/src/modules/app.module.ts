@@ -16,6 +16,7 @@ import { ReviewModule } from './review/review.module';
 import { NotificationModule } from './notification/notification.module';
 import { ChatModule } from './chat/chat.module';
 import { JobModule } from './job/job.module';
+import { TherapistModule } from './therapist/therapist.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -36,6 +37,7 @@ import { AppService } from '../services/app.service';
     NotificationModule,
     ChatModule,
     JobModule,
+    TherapistModule,
   ],
   controllers: [AppController],
   providers: [AppService],
