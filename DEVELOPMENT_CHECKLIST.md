@@ -50,15 +50,15 @@
 
 - [ ] **Phase 8 — Notification & Chat**
   - [x] Event hooks/stub notification (InstantRequest, BookingAccepted/Declined/Timeout, PayoutSuccess, SwapTherapist).
-  - [x] Integrasi push (FCM) via service account; fallback log; siap pakai device token user.fcm_token.
-  - [ ] Chat lifecycle: buka saat SCHEDULED, kunci saat chat_locked_at lewat (handler ada; integrasi chat provider pending).
+  - [x] Integrasi push (FCM) via service account; fallback WA webhook/log; siap pakai device token user.fcm_token.
+  - [x] Chat lifecycle: buka saat create/accept, kunci saat chat_locked_at lewat (closeRoom Firestore).
 
 - [ ] **Phase 9 — Automation (Cron/Jobs)**
   - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
   - [x] handleChatLock: endpoint `/bookings/chat-lock/run` set is_chat_active=false jika chat_locked_at < now.
   - [x] Queue/processor BullMQ untuk expiry, chat lock, therapist timeout (booking-expiry, chat-lock, therapist-timeout).
   - [x] Scheduler repeat jobs: expiry (harian 00:00), chat lock (15m), therapist timeout (5m).
-  - [ ] Job retry payout/webhook failure + monitoring/alerting.
+  - [x] Payout job retry/backoff dan logging event queue (monitoring dasar).
 
 - [ ] **Phase 10 — QA & Hardening**
   - [ ] Unit/integration tests: booking lock, payout idempotency, forfeit path, expiry, monthly stats query, webhook signature.

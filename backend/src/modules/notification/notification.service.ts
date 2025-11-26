@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
+import fetch from 'node-fetch';
 import * as path from 'path';
 
 export type NotificationPayload = {
@@ -15,9 +16,11 @@ export type NotificationPayload = {
 @Injectable()
 export class NotificationService {
   private messaging: admin.messaging.Messaging | null;
+  private waWebhookUrl?: string;
 
   constructor() {
     this.messaging = this.initFirebase();
+    this.waWebhookUrl = process.env.WA_WEBHOOK_URL;
   }
 
   async notifyTherapistInstantBooking(payload: NotificationPayload) {
@@ -59,6 +62,24 @@ export class NotificationService {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn(`[Notification:${event}] FCM failed`, err);
+      }
+    }
+    if (this.waWebhookUrl) {
+      try {
+        await fetch(this.waWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event,
+            title: payload.title,
+            body: payload.body,
+            meta: payload.meta,
+          }),
+        });
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(`[Notification:${event}] WA webhook failed`, err);
       }
     }
     this.log(event, payload);
