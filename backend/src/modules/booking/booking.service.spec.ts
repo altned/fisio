@@ -23,4 +23,18 @@ describe('BookingService utilities', () => {
     const lock = service.computeChatLockAt(scheduled);
     expect(lock.toISOString()).toBe(new Date(scheduled.getTime() + 24 * 3600 * 1000).toISOString());
   });
+
+  it('assertSlotAvailability should throw on overlap', async () => {
+    const sessionRepo: any = {
+      createQueryBuilder: () => ({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(1),
+      }),
+    };
+    await expect(
+      service['assertSlotAvailability'](sessionRepo, 'therapist-1', new Date()),
+    ).rejects.toThrow('Slot tidak tersedia');
+  });
 });

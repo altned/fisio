@@ -61,7 +61,7 @@
   - [x] Payout job retry/backoff dan logging event queue (monitoring dasar).
 
 - [ ] **Phase 10 — QA & Hardening**
-  - [ ] Unit/integration tests: booking lock, payout idempotency, forfeit path, expiry, monthly stats query, webhook signature.
-  - [x] Unit tests dasar: slot alignment/lead time, respond SLA, chat lock time.
+  - [ ] Unit/integration tests: booking lock (DB lock), webhook signature, load/perf, security review.
+  - [x] Unit tests: slot alignment/lead time, respond SLA, chat lock time, payout idempotency, monthly stats, cancel/forfeit/expiry, timeout/chat-lock.
   - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial.
   - [ ] Staging verification checklist: booking→payout happy path, forfeit payout, expiry no-payout, admin swap-therapist, admin withdraw with note.
