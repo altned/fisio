@@ -75,16 +75,41 @@ describe('WalletService', () => {
     },
   };
 
-  it('should payout once and set isPayoutDistributed, idempotent on second call', async () => {
-    const svc = new WalletService(dataSourceStub as any, notificationStub);
-    await svc.payoutSession('s1');
-    expect(sessionRepo.data[0].isPayoutDistributed).toBe(true);
-    expect(walletRepo.data[0].balance).toBe('100.00');
-    expect(txRepo.data.length).toBe(1);
+  describe('payoutSession', () => {
+    it('should payout once and set isPayoutDistributed, idempotent on second call', async () => {
+      const svc = new WalletService(dataSourceStub as any, notificationStub);
+      await svc.payoutSession('s1');
+      expect(sessionRepo.data[0].isPayoutDistributed).toBe(true);
+      expect(walletRepo.data[0].balance).toBe('100.00');
+      expect(txRepo.data.length).toBe(1);
 
-    // second call should do nothing
-    await svc.payoutSession('s1');
-    expect(walletRepo.data[0].balance).toBe('100.00');
-    expect(txRepo.data.length).toBe(1);
+      // second call should do nothing
+      await svc.payoutSession('s1');
+      expect(walletRepo.data[0].balance).toBe('100.00');
+      expect(txRepo.data.length).toBe(1);
+    });
+  });
+
+  describe('getMonthlyIncome', () => {
+    it('should return aggregated credit for current month', async () => {
+      const txRepoMock = {
+        createQueryBuilder: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          addSelect: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          getRawOne: jest.fn().mockResolvedValue({ sum: '150.50' }),
+        }),
+      };
+      const dsMock: any = {
+        getRepository: (entity: any) => {
+          if (entity.name === 'WalletTransaction') return txRepoMock;
+          return null;
+        },
+      };
+      const svc = new WalletService(dsMock, notificationStub);
+      const result = await svc.getMonthlyIncome('wallet-1');
+      expect(result.monthIncome).toBe('150.50');
+    });
   });
 });
