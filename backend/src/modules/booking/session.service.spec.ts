@@ -32,6 +32,11 @@ describe('SessionService cancel logic', () => {
             return null;
           },
         }),
+      getRepository: (entity: any) => {
+        if (entity.name === 'Session') return sessionRepo;
+        if (entity.name === 'Booking') return bookingRepo;
+        return null;
+      },
     };
   }
 
@@ -55,6 +60,36 @@ describe('SessionService cancel logic', () => {
     expect(result.status).toBe('PENDING_SCHEDULING');
     expect(result.scheduledAt).toBeNull();
     expect(payoutQueue.add).not.toHaveBeenCalled();
+  });
+
+  it('completeSession should set COMPLETED and update chat lock when last session', async () => {
+    const booking = {
+      id: 'b3',
+      sessions: [] as any[],
+      chatLockedAt: null as Date | null,
+    };
+    const session = {
+      id: 's3',
+      booking,
+      status: 'SCHEDULED',
+      scheduledAt: new Date('2024-01-01T08:00:00Z'),
+    };
+    booking.sessions = [session];
+    const sessionRepo = makeRepo([session]);
+    const bookingRepo = makeRepo([booking], {
+      findOne: jest.fn(async ({ where }: any) => {
+        if (where?.id === booking.id) return booking;
+        return undefined;
+      }),
+      save: jest.fn(async (b: any) => b),
+    });
+    const dataSource = makeDataSource(sessionRepo, bookingRepo);
+    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const result = await svc.completeSession('s3');
+    expect(result.status).toBe('COMPLETED');
+    expect(booking.chatLockedAt?.toISOString()).toBe(
+      new Date(new Date('2024-01-01T08:00:00Z').getTime() + 24 * 3600 * 1000).toISOString(),
+    );
   });
 
   it('should set FORFEITED when cancel <1h and enqueue payout', async () => {
