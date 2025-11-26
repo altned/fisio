@@ -3,7 +3,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { ExpiryProcessor } from './processors/expiry.processor';
 import { ChatLockProcessor } from './processors/chat-lock.processor';
 import { TimeoutProcessor } from './processors/timeout.processor';
+import { PayoutProcessor } from './processors/payout.processor';
 import { BookingModule } from '../booking/booking.module';
+import { WalletModule } from '../wallet/wallet.module';
 import { JobService } from './job.service';
 
 @Module({
@@ -18,9 +20,11 @@ import { JobService } from './job.service';
       { name: 'booking-expiry' },
       { name: 'chat-lock' },
       { name: 'therapist-timeout' },
+      { name: 'payout' },
     ),
     BookingModule,
+    WalletModule,
   ],
-  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, JobService],
+  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, PayoutProcessor, JobService],
 })
 export class JobModule {}

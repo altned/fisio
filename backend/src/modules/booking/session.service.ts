@@ -1,15 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { DataSource, Repository } from 'typeorm';
-import { WalletService } from '../wallet/wallet.service';
 import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
+import { WalletService } from '../wallet/wallet.service';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const CHAT_LOCK_BUFFER_HOURS = 24;
 
 @Injectable()
 export class SessionService {
-  constructor(private readonly dataSource: DataSource, private readonly walletService: WalletService) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly walletService: WalletService,
+    @InjectQueue('payout') private readonly payoutQueue: Queue,
+  ) {}
 
   async completeSession(sessionId: string): Promise<Session> {
     return this.dataSource.transaction(async (manager) => {
@@ -28,7 +34,7 @@ export class SessionService {
       await sessionRepo.save(session);
 
       await this.updateChatLockIfFinished(bookingRepo, session.booking.id);
-      await this.walletService.payoutSession(session.id);
+      await this.enqueuePayout(session.id);
       return session;
     });
   }
@@ -64,7 +70,7 @@ export class SessionService {
       await this.updateChatLockIfFinished(bookingRepo, session.booking.id);
 
       if (session.status === 'FORFEITED') {
-        await this.walletService.payoutSession(session.id);
+        await this.enqueuePayout(session.id);
       }
       return session;
     });
@@ -106,5 +112,18 @@ export class SessionService {
     const baseTime = latest?.scheduledAt ?? new Date();
     booking.chatLockedAt = new Date(baseTime.getTime() + CHAT_LOCK_BUFFER_HOURS * 3600 * 1000);
     await bookingRepo.save(booking);
+  }
+
+  private async enqueuePayout(sessionId: string) {
+    await this.payoutQueue.add(
+      'run',
+      { sessionId },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
   }
 }

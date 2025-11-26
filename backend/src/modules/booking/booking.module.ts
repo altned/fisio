@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from '../../domain/entities/booking.entity';
 import { Package } from '../../domain/entities/package.entity';
@@ -23,6 +24,7 @@ import { ChatModule } from '../chat/chat.module';
     WalletModule,
     NotificationModule,
     ChatModule,
+    BullModule.registerQueue({ name: 'payout' }),
   ],
   controllers: [BookingController, SessionController],
   providers: [BookingService, SlotService, SessionService, TimeoutService, ChatLockService],
