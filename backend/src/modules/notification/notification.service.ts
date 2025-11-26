@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
 import * as path from 'path';
 
 export type NotificationPayload = {
@@ -66,7 +65,9 @@ export class NotificationService {
     }
     if (this.waWebhookUrl) {
       try {
-        await fetch(this.waWebhookUrl, {
+        const fetchMod = await import('node-fetch');
+        const fetchFn = (fetchMod as any).default ?? fetchMod;
+        await fetchFn(this.waWebhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
