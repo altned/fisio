@@ -4,11 +4,12 @@ import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { WalletTransaction } from '../../domain/entities/wallet-transaction.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { NotificationModule } from '../notification/notification.module';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Wallet, WalletTransaction, Session, Booking])],
+  imports: [TypeOrmModule.forFeature([Wallet, WalletTransaction, Session, Booking]), NotificationModule],
   controllers: [WalletController],
   providers: [WalletService],
   exports: [WalletService],

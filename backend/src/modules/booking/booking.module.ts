@@ -26,6 +26,6 @@ import { ChatModule } from '../chat/chat.module';
   ],
   controllers: [BookingController, SessionController],
   providers: [BookingService, SlotService, SessionService, TimeoutService, ChatLockService],
-  exports: [BookingService],
+  exports: [BookingService, SessionService, TimeoutService, ChatLockService],
 })
 export class BookingModule {}
