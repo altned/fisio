@@ -46,7 +46,7 @@
 
 - [ ] **Phase 7 — Review & Rating**
   - [x] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).
-  - [ ] Expose rating cached di list/detil terapis; mekanisme satu review per booking.
+  - [x] Expose rating cached di list/detil terapis; mekanisme satu review per booking.
 
 - [ ] **Phase 8 — Notification & Chat**
   - [x] Event hooks/stub notification (InstantRequest, BookingAccepted/Declined/Timeout, PayoutSuccess, SwapTherapist).

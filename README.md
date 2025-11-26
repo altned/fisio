@@ -79,3 +79,8 @@
 ## Testing
 - Jalankan unit test: `npm test`
 - Test yang tersedia: validasi slot/lead time, utilitas respond SLA dan chat lock time. Tambahkan test lanjutan untuk payout idempotency, forfeit/expiry, monthly stats sesuai kebutuhan.
+
+## Therapist Rating
+- Endpoint:
+  - `GET /therapists` — daftar terapis beserta rating cached.
+  - `GET /therapists/:id` — detail terapis beserta rating cached.
