@@ -57,6 +57,7 @@
   - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
   - [x] handleChatLock: endpoint `/bookings/chat-lock/run` set is_chat_active=false jika chat_locked_at < now.
   - [x] Queue/processor BullMQ untuk expiry, chat lock, therapist timeout (booking-expiry, chat-lock, therapist-timeout).
+  - [x] Scheduler repeat jobs: expiry (harian 00:00), chat lock (15m), therapist timeout (5m).
   - [ ] Job retry payout/webhook failure + monitoring/alerting.
 
 - [ ] **Phase 10 — QA & Hardening**

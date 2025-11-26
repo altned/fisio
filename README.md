@@ -69,7 +69,10 @@
   - `booking-expiry`: set sesi PENDING_SCHEDULING → EXPIRED jika booking >30 hari.
   - `chat-lock`: set `is_chat_active=false` jika `chat_locked_at` lewat.
   - `therapist-timeout`: batalkan booking PAID yang melewati therapistRespondBy (refund pending).
-- Scheduler belum diset di sini; jalankan enqueue manual atau tambahkan worker sesuai kebutuhan infra.
+- Scheduler: repeatable jobs diset otomatis saat modul job init:
+  - booking-expiry: daily 00:00
+  - chat-lock: setiap 15 menit
+  - therapist-timeout: setiap 5 menit
 
 ## Testing
 - Jalankan unit test: `npm test`

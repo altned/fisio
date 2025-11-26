@@ -4,6 +4,7 @@ import { ExpiryProcessor } from './processors/expiry.processor';
 import { ChatLockProcessor } from './processors/chat-lock.processor';
 import { TimeoutProcessor } from './processors/timeout.processor';
 import { BookingModule } from '../booking/booking.module';
+import { JobService } from './job.service';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { BookingModule } from '../booking/booking.module';
     ),
     BookingModule,
   ],
-  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor],
+  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, JobService],
 })
 export class JobModule {}
