@@ -6,15 +6,26 @@ import { Booking } from '../../domain/entities/booking.entity';
 export class ChatLockService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async lockChats(): Promise<number> {
-    const result = await this.dataSource
+  async lockChats(): Promise<string[]> {
+    const bookings = await this.dataSource
+      .getRepository(Booking)
+      .createQueryBuilder('b')
+      .select('b.id', 'id')
+      .where('b.is_chat_active = true')
+      .andWhere('b.chat_locked_at IS NOT NULL')
+      .andWhere('b.chat_locked_at < NOW()')
+      .getRawMany<{ id: string }>();
+
+    const ids = bookings.map((b) => b.id);
+    if (ids.length === 0) return [];
+
+    await this.dataSource
       .createQueryBuilder()
       .update(Booking)
       .set({ isChatActive: false })
-      .where('is_chat_active = true')
-      .andWhere('chat_locked_at IS NOT NULL')
-      .andWhere('chat_locked_at < NOW()')
+      .where('id IN (:...ids)', { ids })
       .execute();
-    return result.affected ?? 0;
+
+    return ids;
   }
 }
