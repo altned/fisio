@@ -81,4 +81,21 @@ describe('SessionService cancel logic', () => {
       expect.objectContaining({ attempts: 3 }),
     );
   });
+
+  it('expirePendingSessions should return affected count', async () => {
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 5 }),
+    };
+    const dataSource = {
+      createQueryBuilder: jest.fn().mockReturnValue(qb),
+    };
+    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const affected = await svc.expirePendingSessions();
+    expect(affected).toBe(5);
+    expect(qb.update).toHaveBeenCalled();
+  });
 });
