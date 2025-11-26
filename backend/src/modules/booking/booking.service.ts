@@ -210,6 +210,12 @@ export class BookingService {
         body: 'Booking ditolak dan menunggu refund',
         meta: { bookingId: booking.id },
       });
+      await this.notificationService.notifyBookingDeclined({
+        userId: booking.user.id,
+        title: 'Booking dibatalkan',
+        body: 'Booking dibatalkan oleh terapis, refund diproses',
+        meta: { bookingId: booking.id },
+      });
       return saved;
     });
   }

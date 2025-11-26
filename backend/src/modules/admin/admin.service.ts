@@ -40,7 +40,7 @@ export class AdminService {
 
       const booking = await bookingRepo.findOne({
         where: { id: input.bookingId },
-        relations: ['therapist', 'therapist.user'],
+        relations: ['therapist', 'therapist.user', 'user'],
       });
       if (!booking) throw new BadRequestException('Booking tidak ditemukan');
 
@@ -49,6 +49,8 @@ export class AdminService {
         relations: ['user'],
       });
       if (!newTherapist) throw new BadRequestException('Terapis baru tidak ditemukan');
+
+      const oldTherapist = booking.therapist;
 
       booking.therapist = newTherapist;
 
@@ -65,6 +67,21 @@ export class AdminService {
         deviceToken: newTherapist.user?.fcmToken ?? undefined,
         title: 'Booking diperbarui',
         body: 'Anda ditugaskan ke booking baru',
+        meta: { bookingId: booking.id },
+      });
+
+      await this.notificationService.notifySwapTherapist({
+        therapistId: oldTherapist.id,
+        deviceToken: oldTherapist.user?.fcmToken ?? undefined,
+        title: 'Booking dialihkan',
+        body: 'Booking dialihkan ke terapis lain',
+        meta: { bookingId: booking.id },
+      });
+
+      await this.notificationService.notifySwapTherapist({
+        userId: booking.user.id,
+        title: 'Terapis diganti',
+        body: 'Booking Anda dialihkan ke terapis baru',
         meta: { bookingId: booking.id },
       });
 

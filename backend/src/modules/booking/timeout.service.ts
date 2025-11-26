@@ -15,7 +15,8 @@ export class TimeoutService {
       .getRepository(Booking)
       .createQueryBuilder('b')
       .leftJoinAndSelect('b.therapist', 't')
-      .leftJoinAndSelect('t.user', 'u')
+      .leftJoinAndSelect('t.user', 'tu')
+      .leftJoinAndSelect('b.user', 'u')
       .where('b.status = :status', { status: 'PAID' })
       .andWhere('b.therapist_respond_by IS NOT NULL')
       .andWhere('b.therapist_accepted_at IS NULL')
@@ -32,6 +33,12 @@ export class TimeoutService {
         therapistId: booking.therapist.id,
         title: 'Waktu respon habis',
         body: 'Booking dibatalkan, refund diproses',
+        meta: { bookingId: booking.id },
+      });
+      await this.notificationService.notifyBookingTimeout({
+        userId: booking.user.id,
+        title: 'Booking dibatalkan',
+        body: 'Terapis tidak merespons, refund diproses',
         meta: { bookingId: booking.id },
       });
     }
