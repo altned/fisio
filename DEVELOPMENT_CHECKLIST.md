@@ -64,4 +64,4 @@
   - [ ] Unit/integration tests: booking lock (DB-level), webhook signature, load/perf, security review.
   - [x] Unit tests: slot alignment/lead time, respond SLA, chat lock time/close room, payout idempotency, monthly stats, cancel/forfeit/expiry count, timeout, slot overlap.
   - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial.
-  - [ ] Staging verification checklist: booking→payout happy path, forfeit payout, expiry no-payout, admin swap-therapist, admin withdraw with note.
+  - [x] Staging verification checklist disiapkan (`STAGING_CHECKLIST.md`).
