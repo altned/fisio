@@ -6,7 +6,10 @@ import { TimeoutProcessor } from './processors/timeout.processor';
 import { PayoutProcessor } from './processors/payout.processor';
 import { BookingModule } from '../booking/booking.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { ChatModule } from '../chat/chat.module';
+import { NotificationModule } from '../notification/notification.module';
 import { JobService } from './job.service';
+import { QueueEventsListener } from './listeners/queue-events.listener';
 
 @Module({
   imports: [
@@ -24,7 +27,9 @@ import { JobService } from './job.service';
     ),
     BookingModule,
     WalletModule,
+    ChatModule,
+    NotificationModule,
   ],
-  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, PayoutProcessor, JobService],
+  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, PayoutProcessor, JobService, QueueEventsListener],
 })
 export class JobModule {}
