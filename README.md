@@ -61,7 +61,9 @@
 - Siapkan FCM:
   - Letakkan service account JSON di `backend/firebase-service-account.json` (jangan di-commit).
   - Env: `FIREBASE_CREDENTIALS_PATH=./firebase-service-account.json`
+  - Opsional: `FIREBASE_CHAT_COLLECTION=chats`
 - Event hooks tersedia (instant booking, accept/decline/timeout, payout, swap therapist). Jika device token diberikan di payload, FCM akan dikirim; jika tidak, fallback log.
+- ChatService terintegrasi Firestore: openRoom/closeRoom menyimpan status room berdasarkan bookingId.
 
 ## Cron / Jobs
 - Menggunakan BullMQ (Redis): pastikan `REDIS_URL` sudah diset.

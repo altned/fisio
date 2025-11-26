@@ -79,6 +79,8 @@ export class BookingService {
         });
       }
 
+      await this.chatService.openRoom(savedBooking.id, [user.id, therapist.id]);
+
       const sessions: Session[] = [];
       for (let i = 0; i < sessionCount; i++) {
         const isFirst = i === 0;
