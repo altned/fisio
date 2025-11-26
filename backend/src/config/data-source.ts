@@ -9,11 +9,22 @@ import { Therapist } from '../domain/entities/therapist.entity';
 import { User } from '../domain/entities/user.entity';
 import { Wallet } from '../domain/entities/wallet.entity';
 import { WalletTransaction } from '../domain/entities/wallet-transaction.entity';
+import { AdminActionLog } from '../domain/entities/admin-action-log.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: [User, Therapist, Package, Booking, Session, Wallet, WalletTransaction, Review],
+  entities: [
+    User,
+    Therapist,
+    Package,
+    Booking,
+    Session,
+    Wallet,
+    WalletTransaction,
+    Review,
+    AdminActionLog,
+  ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
   logging: false,

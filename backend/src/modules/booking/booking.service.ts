@@ -10,6 +10,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ChatService } from '../chat/chat.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
+import { SearchBookingDto } from './dto/search-booking.dto';
 import { SlotService } from './slot.service';
 
 const SCHEDULABLE_STATUSES: Session['status'][] = ['SCHEDULED', 'PENDING_SCHEDULING'];
@@ -231,5 +232,38 @@ export class BookingService {
     const now = new Date();
     const minutes = bookingType === 'INSTANT' ? 5 : 30;
     return new Date(now.getTime() + minutes * 60 * 1000);
+  }
+
+  async search(filter: SearchBookingDto) {
+    const repo = this.dataSource.getRepository(Booking);
+    const page = Math.max(filter.page ?? 1, 1);
+    const limit = Math.min(Math.max(filter.limit ?? 20, 1), 100);
+    const qb = repo
+      .createQueryBuilder('b')
+      .leftJoinAndSelect('b.user', 'user')
+      .leftJoinAndSelect('b.therapist', 'therapist')
+      .leftJoinAndSelect('b.package', 'package')
+      .orderBy('b.created_at', 'DESC')
+      .take(limit)
+      .skip((page - 1) * limit);
+
+    if (filter.therapistId) {
+      qb.andWhere('b.therapist_id = :tid', { tid: filter.therapistId });
+    }
+    if (filter.userId) {
+      qb.andWhere('b.user_id = :uid', { uid: filter.userId });
+    }
+    if (filter.status) {
+      qb.andWhere('b.status = :status', { status: filter.status });
+    }
+    if (filter.from) {
+      qb.andWhere('b.created_at >= :from', { from: filter.from });
+    }
+    if (filter.to) {
+      qb.andWhere('b.created_at <= :to', { to: filter.to });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, page, limit, total };
   }
 }

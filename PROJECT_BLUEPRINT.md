@@ -46,6 +46,11 @@ Aplikasi on-demand fisioterapi home-visit untuk Pasien (Mobile), Terapis (Mobile
 - Chat dikunci otomatis sesuai `chat_locked_at` (umumnya 24 jam pasca sesi terakhir).
 - Notifikasi prioritas untuk instant booking dan event penting (BookingAccepted, PayoutSuccess, dll.).
 
+### G. Acceptance SLA & Timeout
+- SLA respon terapis: 5 menit untuk INSTANT, 30 menit untuk REGULAR; `therapist_respond_by` diset saat pembayaran dikonfirmasi.
+- Jika melewati SLA tanpa accept, booking otomatis `CANCELLED` + `refund_status=PENDING` dan notifikasi dikirim ke pasien/terapis.
+- Accept pertama membuka room chat; decline/timeout memicu refund manual oleh admin.
+
 ## 4. Database Schema (ERD)
 ```mermaid
 erDiagram
@@ -120,3 +125,5 @@ erDiagram
 ## 6. Automation (Cron/Jobs)
 - **handlePackageExpiry** — Harian 00:00: set `sessions.status = EXPIRED` jika `bookings.created_at > 30 hari` dan `sessions.status = PENDING_SCHEDULING` (tanpa payout).
 - **handleChatLock** — Tiap 15 menit: set `is_chat_active = false` jika `chat_locked_at < NOW()`.
+- **therapist-timeout** — Tiap 5 menit: batalkan booking `PAID` yang melewati `therapist_respond_by`, set `refund_status = PENDING`, kirim notifikasi timeout.
+- **payout queue** — Job BullMQ dengan retry/backoff (3x exponential 5s) + event log; dijalankan saat sesi COMPLETED/FORFEITED.

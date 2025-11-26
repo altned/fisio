@@ -17,43 +17,44 @@
   - [x] Generator/validator slot 90 menit (:00/:30) dengan lead time >1h untuk instant.
   - [x] Implementasi createBooking (regular/instant) dalam DB transaction + pessimistic/serializable locking per slot/terapis.
   - [x] Lock alamat & therapist_id saat booking; enforce pada sesi berikutnya.
-  - [x] Profile guard: tolak booking jika user.is_profile_complete = false.
-  - [x] Hitung snapshot pricing (admin_fee_amount, therapist_net_total) pada booking create.
+- [x] Profile guard: tolak booking jika user.is_profile_complete = false.
+- [x] Hitung snapshot pricing (admin_fee_amount, therapist_net_total) pada booking create.
 
 - [x] **Phase 3 — Payment & Acceptance**
   - [x] Pembayaran manual: instruksi rekening/QRIS, upload bukti bayar, konfirmasi admin set PAID.
   - [x] Terapis accept/timeout: 5m instant, 30m regular; decline/timeout → booking CANCELLED + refund_status PENDING.
   - [x] Aktivasi chat baseline: set chat_locked_at = scheduled_at + 24h pada payment confirm/accept.
 
-- [ ] **Phase 4 — Session Lifecycle**
+- [x] **Phase 4 — Session Lifecycle**
   - [x] Transisi status: SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.
   - [x] Multi-sesi: sisa kuota jadi PENDING_SCHEDULING; enforce locked address/terapis.
   - [x] Expiry: booking usia >30 hari → sesi PENDING_SCHEDULING menjadi EXPIRED tanpa payout (endpoint expire).
   - [x] Chat lock otomatis 24h setelah sesi terakhir (update chat_locked_at).
 
-- [ ] **Phase 5 — Wallet & Revenue Split**
+- [x] **Phase 5 — Wallet & Revenue Split**
   - [x] Payout pro-rata: unit = therapist_net_total / total_sessions; trigger pada COMPLETED/FORFEITED.
   - [x] Implement topUpWallet dalam 1 DB transaction: update WALLETS.balance + WALLET_TRANSACTIONS + set SESSIONS.is_payout_distributed (idempoten).
   - [x] Kategori transaksi: SESSION_FEE, FORFEIT_COMPENSATION, WITHDRAWAL; DEBIT wajib admin_note.
   - [x] Monthly stats query: SUM(amount) WHERE type='CREDIT' AND month(created_at)=current_month (tanpa reset tabel).
 
-- [ ] **Phase 6 — Admin Ops**
+- [x] **Phase 6 — Admin Ops**
   - [x] Endpoint PATCH /admin/bookings/:id/swap-therapist: update locked_therapist di BOOKINGS + therapist_id di SESSIONS (pending/scheduled).
   - [x] Admin withdraw/transfer manual: form dengan admin_note wajib; tampilkan admin_note di riwayat terapis.
   - [x] Refund flow untuk decline/timeout; audit log aksi finansial (data tersimpan via refund_status/reference/note).
+  - [x] Booking search/list filter + pagination (admin).
   - [x] Notifikasi swap therapist (stub service, siap integrasi ke push/WA).
   - [x] Auto-timeout terapis (5m instant, 30m regular) → booking CANCELLED + refund_status PENDING.
 
-- [ ] **Phase 7 — Review & Rating**
+- [x] **Phase 7 — Review & Rating**
   - [x] Endpoint submitReview: transaksi insert REVIEWS + hitung ulang average_rating & total_reviews (atomik).
   - [x] Expose rating cached di list/detil terapis; mekanisme satu review per booking.
 
-- [ ] **Phase 8 — Notification & Chat**
+- [x] **Phase 8 — Notification & Chat**
   - [x] Event hooks/stub notification (InstantRequest, BookingAccepted/Declined/Timeout, PayoutSuccess, SwapTherapist).
   - [x] Integrasi push (FCM) via service account; fallback WA webhook/log; siap pakai device token user.fcm_token.
   - [x] Chat lifecycle: buka saat create/accept, kunci saat chat_locked_at lewat (closeRoom Firestore).
 
-- [ ] **Phase 9 — Automation (Cron/Jobs)**
+- [x] **Phase 9 — Automation (Cron/Jobs)**
   - [x] handlePackageExpiry: endpoint `/bookings/expire/run` set sessions PENDING_SCHEDULING → EXPIRED jika booking >30d; tanpa payout.
   - [x] handleChatLock: endpoint `/bookings/chat-lock/run` set is_chat_active=false jika chat_locked_at < now.
   - [x] Queue/processor BullMQ untuk expiry, chat lock, therapist timeout (booking-expiry, chat-lock, therapist-timeout).
@@ -61,6 +62,7 @@
   - [x] Payout job retry/backoff dan logging event queue (monitoring dasar).
 
 - [ ] **Phase 10 — QA & Hardening**
+  - [x] Role guard admin/finansial + admin action log (admin_action_logs).
   - [ ] Unit/integration tests: booking lock (DB-level), webhook signature, load/perf, security review.
   - [x] Unit tests: slot alignment/lead time, respond SLA, chat lock time/close room, payout idempotency, monthly stats, cancel/forfeit/expiry count, timeout, slot overlap.
   - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial.

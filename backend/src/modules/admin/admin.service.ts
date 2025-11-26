@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { In } from 'typeorm';
 import { DataSource } from 'typeorm';
 import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { Therapist } from '../../domain/entities/therapist.entity';
 import { WalletTransaction } from '../../domain/entities/wallet-transaction.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { AdminActionLog } from '../../domain/entities/admin-action-log.entity';
 import { NotificationService } from '../notification/notification.service';
+import { WalletService } from '../wallet/wallet.service';
+import { ManualPayoutDto } from './dto/manual-payout.dto';
 import { CompleteRefundDto } from './dto/complete-refund.dto';
 import { SwapTherapistDto } from './dto/swap-therapist.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
@@ -16,9 +18,10 @@ export class AdminService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly notificationService: NotificationService,
+    private readonly walletService: WalletService,
   ) {}
 
-  async completeRefund(input: CompleteRefundDto): Promise<Booking> {
+  async completeRefund(input: CompleteRefundDto, adminId?: string): Promise<Booking> {
     const repo = this.dataSource.getRepository(Booking);
     const booking = await repo.findOne({ where: { id: input.bookingId } });
     if (!booking) throw new BadRequestException('Booking tidak ditemukan');
@@ -29,10 +32,15 @@ export class AdminService {
     booking.refundReference = input.refundReference ?? null;
     booking.refundNote = input.refundNote ?? null;
     booking.refundedAt = new Date();
-    return repo.save(booking);
+    const saved = await repo.save(booking);
+    await this.logAdminAction(adminId, 'REFUND_COMPLETED', 'booking', booking.id, {
+      refundReference: booking.refundReference,
+      refundNote: booking.refundNote,
+    });
+    return saved;
   }
 
-  async swapTherapist(input: SwapTherapistDto): Promise<Booking> {
+  async swapTherapist(input: SwapTherapistDto, adminId?: string): Promise<Booking> {
     return this.dataSource.transaction(async (manager) => {
       const bookingRepo = manager.getRepository(Booking);
       const sessionRepo = manager.getRepository(Session);
@@ -85,11 +93,16 @@ export class AdminService {
         meta: { bookingId: booking.id },
       });
 
-      return bookingRepo.save(booking);
+      const saved = await bookingRepo.save(booking);
+      await this.logAdminAction(adminId, 'SWAP_THERAPIST', 'booking', booking.id, {
+        fromTherapistId: oldTherapist.id,
+        toTherapistId: newTherapist.id,
+      });
+      return saved;
     });
   }
 
-  async withdraw(dto: WithdrawDto): Promise<WalletTransaction> {
+  async withdraw(dto: WithdrawDto, adminId?: string): Promise<WalletTransaction> {
     if (!dto.adminNote || dto.adminNote.trim().length === 0) {
       throw new BadRequestException('admin_note wajib diisi');
     }
@@ -120,7 +133,46 @@ export class AdminService {
       });
 
       await walletRepo.save(wallet);
-      return txRepo.save(tx);
+      const savedTx = await txRepo.save(tx);
+      await this.logAdminAction(adminId, 'WITHDRAW', 'wallet', wallet.id, {
+        amount: tx.amount,
+        adminNote: tx.adminNote,
+      });
+      return savedTx;
     });
+  }
+
+  async manualPayout(dto: ManualPayoutDto, adminId?: string): Promise<void> {
+    if (!dto.adminNote || dto.adminNote.trim().length === 0) {
+      throw new BadRequestException('admin_note wajib diisi');
+    }
+    await this.walletService.payoutSession(dto.sessionId, { adminNote: dto.adminNote });
+    await this.logAdminAction(adminId, 'MANUAL_PAYOUT', 'session', dto.sessionId, {
+      adminNote: dto.adminNote,
+    });
+  }
+
+  private async logAdminAction(
+    adminId: string | undefined,
+    action: string,
+    targetType: string,
+    targetId: string,
+    meta?: Record<string, unknown>,
+  ) {
+    try {
+      const repo = this.dataSource?.getRepository?.(AdminActionLog);
+      if (!repo || !repo.create || !repo.save) return;
+      const log = repo.create({
+        adminId: adminId ?? null,
+        action,
+        targetType,
+        targetId,
+        meta: meta ?? null,
+      });
+      await repo.save(log);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[AdminActionLog] failed to persist', err);
+    }
   }
 }

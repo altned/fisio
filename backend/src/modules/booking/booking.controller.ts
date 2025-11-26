@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { RespondBookingDto } from './dto/respond-booking.dto';
+import { Roles, RolesGuard } from '../../common/auth';
+import { SearchBookingDto } from './dto/search-booking.dto';
 import { TimeoutService } from './timeout.service';
 import { ChatLockService } from './chat-lock.service';
 import { SessionService } from './session.service';
@@ -15,6 +17,24 @@ export class BookingController {
     private readonly chatLockService: ChatLockService,
     private readonly sessionService: SessionService,
   ) {}
+
+  @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  search(@Query() query: any) {
+    const parsed: SearchBookingDto = {
+      therapistId: query.therapistId,
+      userId: query.userId,
+      status: query.status,
+      from: query.from ? new Date(query.from) : null,
+      to: query.to ? new Date(query.to) : null,
+      page: query.page ? Number(query.page) : undefined,
+      limit: query.limit ? Number(query.limit) : undefined,
+    };
+    if (parsed.from && Number.isNaN(parsed.from.getTime())) parsed.from = null;
+    if (parsed.to && Number.isNaN(parsed.to.getTime())) parsed.to = null;
+    return this.bookingService.search(parsed);
+  }
 
   @Post()
   create(@Body() body: CreateBookingDto): Promise<Booking> {

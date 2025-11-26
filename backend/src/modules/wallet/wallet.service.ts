@@ -14,7 +14,7 @@ export class WalletService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async payoutSession(sessionId: string): Promise<void> {
+  async payoutSession(sessionId: string, options?: { adminNote?: string }): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const sessionRepo = manager.getRepository(Session);
       const bookingRepo = manager.getRepository(Booking);
@@ -63,7 +63,7 @@ export class WalletService {
         amount,
         type: 'CREDIT',
         category,
-        adminNote: null,
+        adminNote: options?.adminNote ?? null,
       });
 
       await walletRepo.save(wallet);

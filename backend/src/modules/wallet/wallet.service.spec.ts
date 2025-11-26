@@ -1,7 +1,7 @@
 import { WalletService } from './wallet.service';
 
 describe('WalletService', () => {
-  const notificationStub: any = { notifyPayoutSuccess: jest.fn() };
+  const makeNotificationStub = () => ({ notifyPayoutSuccess: jest.fn() });
 
   function makeRepo<T extends { id?: string }>(data: T[], overrides: Partial<any> = {}) {
     return {
@@ -37,27 +37,37 @@ describe('WalletService', () => {
     };
   }
 
-  const bookingRepo = makeRepo<any>([
-    {
-      id: 'b1',
-      therapistNetTotal: '100.00',
-      therapist: { id: 't1', user: { fcmToken: null } },
-    },
-  ]);
-  const sessionRepo = makeRepo<any>([
-    {
-      id: 's1',
-      booking: { id: 'b1' },
-      status: 'COMPLETED',
-      sequenceOrder: 1,
-      isPayoutDistributed: false,
-    },
-  ]);
-  const walletRepo = makeRepo<any>([{ id: 'w1', therapist: { id: 't1' }, balance: '0' }]);
-  const txRepo = makeRepo<any>([]);
+  function buildFixture() {
+    const bookingRepo = makeRepo<any>([
+      {
+        id: 'b1',
+        therapistNetTotal: '100.00',
+        therapist: { id: 't1', user: { fcmToken: null } },
+      },
+    ]);
+    const sessionRepo = makeRepo<any>([
+      {
+        id: 's1',
+        booking: { id: 'b1' },
+        status: 'COMPLETED',
+        sequenceOrder: 1,
+        isPayoutDistributed: false,
+      },
+    ]);
+    const walletRepo = makeRepo<any>([{ id: 'w1', therapist: { id: 't1' }, balance: '0' }]);
+    const txRepo = makeRepo<any>([]);
 
-  const dataSourceStub: any = {
-    transaction: async (fn: any) => fn({
+    const dataSourceStub: any = {
+      transaction: async (fn: any) =>
+        fn({
+          getRepository: (entity: any) => {
+            if (entity.name === 'Session') return sessionRepo;
+            if (entity.name === 'Booking') return bookingRepo;
+            if (entity.name === 'Wallet') return walletRepo;
+            if (entity.name === 'WalletTransaction') return txRepo;
+            return null;
+          },
+        }),
       getRepository: (entity: any) => {
         if (entity.name === 'Session') return sessionRepo;
         if (entity.name === 'Booking') return bookingRepo;
@@ -65,19 +75,15 @@ describe('WalletService', () => {
         if (entity.name === 'WalletTransaction') return txRepo;
         return null;
       },
-    }),
-    getRepository: (entity: any) => {
-      if (entity.name === 'Session') return sessionRepo;
-      if (entity.name === 'Booking') return bookingRepo;
-      if (entity.name === 'Wallet') return walletRepo;
-      if (entity.name === 'WalletTransaction') return txRepo;
-      return null;
-    },
-  };
+    };
+
+    const svc = new WalletService(dataSourceStub as any, makeNotificationStub());
+    return { svc, bookingRepo, sessionRepo, walletRepo, txRepo };
+  }
 
   describe('payoutSession', () => {
     it('should payout once and set isPayoutDistributed, idempotent on second call', async () => {
-      const svc = new WalletService(dataSourceStub as any, notificationStub);
+      const { svc, sessionRepo, walletRepo, txRepo } = buildFixture();
       await svc.payoutSession('s1');
       expect(sessionRepo.data[0].isPayoutDistributed).toBe(true);
       expect(walletRepo.data[0].balance).toBe('100.00');
@@ -87,6 +93,12 @@ describe('WalletService', () => {
       await svc.payoutSession('s1');
       expect(walletRepo.data[0].balance).toBe('100.00');
       expect(txRepo.data.length).toBe(1);
+    });
+
+    it('should persist admin note when provided (manual payout)', async () => {
+      const { svc, txRepo } = buildFixture();
+      await svc.payoutSession('s1', { adminNote: 'manual adjustment' });
+      expect(txRepo.data[0].adminNote).toBe('manual adjustment');
     });
   });
 
@@ -107,7 +119,7 @@ describe('WalletService', () => {
           return null;
         },
       };
-      const svc = new WalletService(dsMock, notificationStub);
+      const svc = new WalletService(dsMock, makeNotificationStub());
       const result = await svc.getMonthlyIncome('wallet-1');
       expect(result.monthIncome).toBe('150.50');
     });
