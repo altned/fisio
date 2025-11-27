@@ -5,15 +5,18 @@ import { DataSource, Repository } from 'typeorm';
 import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { WalletService } from '../wallet/wallet.service';
+import { SlotService } from './slot.service';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const CHAT_LOCK_BUFFER_HOURS = 24;
+const SCHEDULABLE_STATUSES: Session['status'][] = ['SCHEDULED', 'PENDING_SCHEDULING'];
 
 @Injectable()
 export class SessionService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly walletService: WalletService,
+    private readonly slotService: SlotService,
     @InjectQueue('payout') private readonly payoutQueue: Queue,
   ) {}
 
@@ -90,6 +93,35 @@ export class SessionService {
     return result.affected ?? 0;
   }
 
+  async schedulePendingSession(sessionId: string, scheduledAt: Date): Promise<Session> {
+    if (!this.slotService.isSlotAligned(scheduledAt)) {
+      throw new BadRequestException('Slot harus pada menit :00 atau :30');
+    }
+    if (!this.slotService.hasValidLeadTime(scheduledAt)) {
+      throw new BadRequestException('Slot harus memiliki lead time > 60 menit');
+    }
+
+    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+      const sessionRepo = manager.getRepository(Session);
+      const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['booking', 'booking.therapist'],
+      });
+      if (!session) throw new BadRequestException('Session tidak ditemukan');
+      if (session.status !== 'PENDING_SCHEDULING') {
+        throw new BadRequestException('Session tidak dapat dijadwalkan');
+      }
+
+      await this.assertSlotAvailability(sessionRepo, session.booking.therapist.id, scheduledAt);
+
+      session.scheduledAt = scheduledAt;
+      session.status = 'SCHEDULED';
+      session.therapist = session.booking.therapist; // enforce locked therapist
+
+      return sessionRepo.save(session);
+    });
+  }
+
   private async updateChatLockIfFinished(bookingRepo: Repository<Booking>, bookingId: string) {
     const booking = await bookingRepo.findOne({
       where: { id: bookingId },
@@ -125,5 +157,24 @@ export class SessionService {
         removeOnFail: false,
       },
     );
+  }
+
+  private async assertSlotAvailability(
+    sessionRepo: Repository<Session>,
+    therapistId: string,
+    scheduledAt: Date,
+  ) {
+    const { start, end } = this.slotService.slotWindow(scheduledAt);
+    const overlapping = await sessionRepo
+      .createQueryBuilder('session')
+      .setLock('pessimistic_write')
+      .where('session.therapist_id = :therapistId', { therapistId })
+      .andWhere('session.status IN (:...statuses)', { statuses: SCHEDULABLE_STATUSES })
+      .andWhere('session.scheduled_at BETWEEN :start AND :end', { start, end })
+      .getCount();
+
+    if (overlapping > 0) {
+      throw new BadRequestException('Slot tidak tersedia (double booking)');
+    }
   }
 }

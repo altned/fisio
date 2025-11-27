@@ -1,10 +1,12 @@
 import { SessionService } from './session.service';
+import { SlotService } from './slot.service';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 describe('SessionService cancel logic', () => {
   const payoutQueue = { add: jest.fn() };
   const walletService: any = { payoutSession: jest.fn() };
+  const slotService = new SlotService();
 
   function makeRepo<T extends { id: string }>(items: T[], extra: Record<string, any> = {}) {
     return {
@@ -54,7 +56,7 @@ describe('SessionService cancel logic', () => {
     const bookingRepo = makeRepo([booking]);
     const dataSource = makeDataSource(sessionRepo, bookingRepo);
 
-    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const svc = new SessionService(dataSource as any, walletService, slotService, payoutQueue as any);
     const result = await svc.cancelSession('s1');
 
     expect(result.status).toBe('PENDING_SCHEDULING');
@@ -84,7 +86,7 @@ describe('SessionService cancel logic', () => {
       save: jest.fn(async (b: any) => b),
     });
     const dataSource = makeDataSource(sessionRepo, bookingRepo);
-    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const svc = new SessionService(dataSource as any, walletService, slotService, payoutQueue as any);
     const result = await svc.completeSession('s3');
     expect(result.status).toBe('COMPLETED');
     expect(booking.chatLockedAt?.toISOString()).toBe(
@@ -106,7 +108,7 @@ describe('SessionService cancel logic', () => {
     const bookingRepo = makeRepo([booking]);
     const dataSource = makeDataSource(sessionRepo, bookingRepo);
 
-    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const svc = new SessionService(dataSource as any, walletService, slotService, payoutQueue as any);
     const result = await svc.cancelSession('s2');
 
     expect(result.status).toBe('FORFEITED');
@@ -128,9 +130,47 @@ describe('SessionService cancel logic', () => {
     const dataSource = {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
     };
-    const svc = new SessionService(dataSource as any, walletService, payoutQueue as any);
+    const svc = new SessionService(dataSource as any, walletService, slotService, payoutQueue as any);
     const affected = await svc.expirePendingSessions();
     expect(affected).toBe(5);
     expect(qb.update).toHaveBeenCalled();
+  });
+
+  it('schedulePendingSession should align slot, lock and set status', async () => {
+    const booking = { id: 'b-lock', therapist: { id: 't-lock' } };
+    const session = {
+      id: 's-lock',
+      booking,
+      therapist: { id: 't-lock' },
+      status: 'PENDING_SCHEDULING',
+      scheduledAt: null,
+    };
+    const qb = {
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(0),
+    };
+    const sessionRepo = {
+      findOne: jest.fn().mockResolvedValue(session),
+      createQueryBuilder: jest.fn(() => qb),
+      save: jest.fn(async (s: any) => s),
+    };
+    const dataSource: any = {
+      transaction: async (_iso: any, fn: any) =>
+        fn({
+          getRepository: (entity: any) => {
+            if (entity.name === 'Session') return sessionRepo;
+            return null;
+          },
+        }),
+    };
+    const svc = new SessionService(dataSource, walletService, slotService, payoutQueue as any);
+    const scheduledAt = new Date(Date.now() + ONE_HOUR_MS * 2);
+    scheduledAt.setMinutes(0, 0, 0);
+    const result = await svc.schedulePendingSession('s-lock', scheduledAt);
+    expect(result.status).toBe('SCHEDULED');
+    expect(result.scheduledAt).toEqual(scheduledAt);
+    expect(qb.setLock).toHaveBeenCalledWith('pessimistic_write');
   });
 });
