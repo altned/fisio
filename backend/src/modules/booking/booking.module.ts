@@ -17,7 +17,7 @@ import { TimeoutService } from './timeout.service';
 import { ChatLockService } from './chat-lock.service';
 import { NotificationModule } from '../notification/notification.module';
 import { ChatModule } from '../chat/chat.module';
-import { RolesGuard } from '../../common/auth';
+import { RolesGuard, JwtGuard } from '../../common/auth';
 
 @Module({
   imports: [
@@ -28,7 +28,15 @@ import { RolesGuard } from '../../common/auth';
     BullModule.registerQueue({ name: 'payout' }),
   ],
   controllers: [BookingController, SessionController],
-  providers: [BookingService, SlotService, SessionService, TimeoutService, ChatLockService, RolesGuard],
+  providers: [
+    BookingService,
+    SlotService,
+    SessionService,
+    TimeoutService,
+    ChatLockService,
+    RolesGuard,
+    JwtGuard,
+  ],
   exports: [BookingService, SessionService, TimeoutService, ChatLockService],
 })
 export class BookingModule {}

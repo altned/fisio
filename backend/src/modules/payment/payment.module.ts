@@ -3,12 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingModule } from '../booking/booking.module';
 import { NotificationModule } from '../notification/notification.module';
+import { RolesGuard, JwtGuard } from '../../common/auth';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Booking]), forwardRef(() => BookingModule), NotificationModule],
   controllers: [PaymentController],
-  providers: [PaymentService],
+  providers: [PaymentService, RolesGuard, JwtGuard],
 })
 export class PaymentModule {}

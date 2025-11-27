@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { Booking } from '../domain/entities/booking.entity';
 import { Package } from '../domain/entities/package.entity';
 import { Review } from '../domain/entities/review.entity';
@@ -8,6 +10,7 @@ import { Therapist } from '../domain/entities/therapist.entity';
 import { User } from '../domain/entities/user.entity';
 import { Wallet } from '../domain/entities/wallet.entity';
 import { WalletTransaction } from '../domain/entities/wallet-transaction.entity';
+import { AdminActionLog } from '../domain/entities/admin-action-log.entity';
 import { BookingModule } from './booking/booking.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
@@ -22,10 +25,26 @@ import { AppService } from '../services/app.service';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60,
+        limit: 100,
+      },
+    ]),
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User, Therapist, Package, Booking, Session, Wallet, WalletTransaction, Review],
+      entities: [
+        User,
+        Therapist,
+        Package,
+        Booking,
+        Session,
+        Wallet,
+        WalletTransaction,
+        Review,
+        AdminActionLog,
+      ],
       synchronize: false,
       autoLoadEntities: true,
     }),
@@ -40,6 +59,12 @@ import { AppService } from '../services/app.service';
     TherapistModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

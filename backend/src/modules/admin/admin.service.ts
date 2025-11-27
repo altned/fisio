@@ -152,6 +152,18 @@ export class AdminService {
     });
   }
 
+  async listAdminActions(page = 1, limit = 20) {
+    const repo = this.dataSource.getRepository(AdminActionLog);
+    const take = Math.min(Math.max(limit, 1), 100);
+    const skip = (Math.max(page, 1) - 1) * take;
+    const [data, total] = await repo.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip,
+      take,
+    });
+    return { data, page: Math.max(page, 1), limit: take, total };
+  }
+
   private async logAdminAction(
     adminId: string | undefined,
     action: string,

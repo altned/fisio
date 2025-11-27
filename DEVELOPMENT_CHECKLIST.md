@@ -63,7 +63,7 @@
 
 - [ ] **Phase 10 — QA & Hardening**
   - [x] Role guard admin/finansial + admin action log (admin_action_logs).
-  - [ ] Unit/integration tests: booking lock (DB-level), webhook signature, load/perf, security review.
+  - [x] Unit/integration tests: booking lock (DB-level) dan payout idempotensi pro-rata; webhook signature & load/perf masih pending.
   - [x] Unit tests: slot alignment/lead time, respond SLA, chat lock time/close room, payout idempotency, monthly stats, cancel/forfeit/expiry count, timeout, slot overlap.
-  - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial.
+  - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial (webhook signature belum).
   - [x] Staging verification checklist disiapkan (`STAGING_CHECKLIST.md`).

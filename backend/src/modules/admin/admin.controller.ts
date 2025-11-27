@@ -1,12 +1,12 @@
-import { Body, Controller, Param, Patch, Post, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, Req } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CompleteRefundDto } from './dto/complete-refund.dto';
 import { ManualPayoutDto } from './dto/manual-payout.dto';
 import { SwapTherapistDto } from './dto/swap-therapist.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
-import { Roles, RolesGuard } from '../../common/auth';
+import { Roles, RolesGuard, JwtGuard } from '../../common/auth';
 
-@UseGuards(RolesGuard)
+@UseGuards(JwtGuard, RolesGuard)
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
@@ -40,5 +40,12 @@ export class AdminController {
       sessionId,
       adminNote: body.adminNote,
     }, req.user?.id);
+  }
+
+  @Get('logs')
+  listLogs(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 20;
+    return this.adminService.listAdminActions(p, l);
   }
 }

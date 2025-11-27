@@ -21,7 +21,9 @@ describe('WalletService', () => {
         return data.length;
       }),
       save: jest.fn(async (entity: T) => {
-        const idx = data.findIndex((d: any) => d.id === (entity as any).id);
+        const targetId = (entity as any).id ?? `auto-${data.length + 1}`;
+        (entity as any).id = targetId;
+        const idx = data.findIndex((d: any) => d.id === targetId);
         if (idx >= 0) {
           data[idx] = { ...(data[idx] as any), ...(entity as any) };
           return data[idx];
@@ -37,25 +39,34 @@ describe('WalletService', () => {
     };
   }
 
-  function buildFixture() {
-    const bookingRepo = makeRepo<any>([
-      {
-        id: 'b1',
-        therapistNetTotal: '100.00',
-        therapist: { id: 't1', user: { fcmToken: null } },
-      },
+  function buildFixture(opts?: {
+    booking?: any;
+    sessions?: any[];
+    wallets?: any[];
+    txRepo?: any;
+  }) {
+    const booking = opts?.booking ?? {
+      id: 'b1',
+      therapistNetTotal: '100.00',
+      therapist: { id: 't1', user: { fcmToken: null } },
+    };
+    const bookingRepo = makeRepo<any>([booking]);
+    const sessionRepo = makeRepo<any>(
+      opts?.sessions ??
+        [
+          {
+            id: 's1',
+            booking: { id: booking.id },
+            status: 'COMPLETED',
+            sequenceOrder: 1,
+            isPayoutDistributed: false,
+          },
+        ],
+    );
+    const walletRepo = makeRepo<any>(opts?.wallets ?? [
+      { id: 'w1', therapist: booking.therapist, balance: '0' },
     ]);
-    const sessionRepo = makeRepo<any>([
-      {
-        id: 's1',
-        booking: { id: 'b1' },
-        status: 'COMPLETED',
-        sequenceOrder: 1,
-        isPayoutDistributed: false,
-      },
-    ]);
-    const walletRepo = makeRepo<any>([{ id: 'w1', therapist: { id: 't1' }, balance: '0' }]);
-    const txRepo = makeRepo<any>([]);
+    const txRepo = makeRepo<any>(opts?.txRepo ?? []);
 
     const dataSourceStub: any = {
       transaction: async (fn: any) =>
@@ -99,6 +110,46 @@ describe('WalletService', () => {
       const { svc, txRepo } = buildFixture();
       await svc.payoutSession('s1', { adminNote: 'manual adjustment' });
       expect(txRepo.data[0].adminNote).toBe('manual adjustment');
+    });
+  });
+
+  describe('payoutSession pro-rata and idempotent', () => {
+    it('should distribute pro-rata across multiple sessions and avoid double credit', async () => {
+      const booking = {
+        id: 'b2',
+        therapistNetTotal: '200.00',
+        therapist: { id: 't2', user: { fcmToken: null } },
+      };
+      const { svc, sessionRepo, walletRepo, txRepo } = buildFixture({
+        booking,
+        sessions: [
+          {
+            id: 's10',
+            booking: { id: 'b2' },
+            status: 'COMPLETED',
+            sequenceOrder: 1,
+            isPayoutDistributed: false,
+          },
+          {
+            id: 's11',
+            booking: { id: 'b2' },
+            status: 'FORFEITED',
+            sequenceOrder: 2,
+            isPayoutDistributed: false,
+          },
+        ],
+        wallets: [{ id: 'w2', therapist: booking.therapist, balance: '0' }],
+      });
+
+      await svc.payoutSession('s10');
+      await svc.payoutSession('s10'); // idempotent
+      await svc.payoutSession('s11');
+
+      const wallet = walletRepo.data.find((w: any) => w.id === 'w2');
+      expect(wallet?.balance).toBe('200.00'); // 100 per session
+      expect(txRepo.data.length).toBe(2);
+      expect(txRepo.data.map((t: any) => t.amount)).toEqual(['100.00', '100.00']);
+      expect(sessionRepo.data.filter((s: any) => s.isPayoutDistributed).length).toBe(2);
     });
   });
 
