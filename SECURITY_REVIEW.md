@@ -7,4 +7,4 @@
 - [x] Audit Logging: aksi admin (refund, withdraw, swap, manual payout, topup) tercatat (admin_action_logs).
 - [ ] Transport: pastikan HTTPS di staging/production; CORS sudah diaktifkan, perlu verifikasi konfigurasi reverse proxy.
 - [x] Dependency: npm audit high severity dibersihkan (node-forge).
-- [ ] Webhook Signature: belum ada webhook inbound aktif; jika diaktifkan kembali, tambahkan signature verification (HMAC) sebelum memproses payload.
+- [x] Webhook Signature: guard HMAC-SHA256 tersedia (`WebhookSignatureGuard`) untuk endpoint inbound; gunakan `WEBHOOK_SECRET`, header `X-Signature` (opsional `X-Timestamp` ±5m); contoh di `/webhooks/test`.
