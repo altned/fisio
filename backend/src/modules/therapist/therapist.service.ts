@@ -9,6 +9,15 @@ export class TherapistService {
   async list(): Promise<Therapist[]> {
     return this.dataSource.getRepository(Therapist).find({
       relations: ['user'],
+      select: {
+        id: true,
+        averageRating: true,
+        totalReviews: true,
+        user: {
+          id: true,
+          fullName: true,
+        },
+      },
       order: { averageRating: 'DESC' as const },
     });
   }
@@ -17,6 +26,15 @@ export class TherapistService {
     const therapist = await this.dataSource.getRepository(Therapist).findOne({
       where: { id },
       relations: ['user'],
+      select: {
+        id: true,
+        averageRating: true,
+        totalReviews: true,
+        user: {
+          id: true,
+          fullName: true,
+        },
+      },
     });
     if (!therapist) throw new BadRequestException('Terapis tidak ditemukan');
     return therapist;
