@@ -4,6 +4,7 @@ import { CompleteRefundDto } from './dto/complete-refund.dto';
 import { ManualPayoutDto } from './dto/manual-payout.dto';
 import { SwapTherapistDto } from './dto/swap-therapist.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { TopupDto } from './dto/topup.dto';
 import { Roles, RolesGuard, JwtGuard } from '../../common/auth';
 
 @UseGuards(JwtGuard, RolesGuard)
@@ -32,6 +33,18 @@ export class AdminController {
       amount: body.amount,
       adminNote: body.adminNote,
     }, req.user?.id);
+  }
+
+  @Post('wallets/:id/topup')
+  topup(@Req() req: any, @Param('id') walletId: string, @Body() body: Omit<TopupDto, 'walletId'>) {
+    return this.adminService.topUpWallet(
+      {
+        walletId,
+        amount: body.amount,
+        adminNote: body.adminNote,
+      },
+      req.user?.id,
+    );
   }
 
   @Post('sessions/:id/payout')

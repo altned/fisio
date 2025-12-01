@@ -22,4 +22,32 @@ describe('AdminService manual payout', () => {
       adminNote: 'manual settlement',
     });
   });
+
+  it('topUpWallet should credit balance and log', async () => {
+    const wallet = { id: 'w1', balance: '0' };
+    const txRepo = {
+      create: jest.fn((e: any) => e),
+      save: jest.fn(async (e: any) => e),
+    };
+    const walletRepo = {
+      findOne: jest.fn(async () => wallet),
+      save: jest.fn(async (w: any) => w),
+    };
+    const dataSource: any = {
+      transaction: async (fn: any) =>
+        fn({
+          getRepository: (entity: any) => {
+            if (entity.name === 'Wallet') return walletRepo;
+            if (entity.name === 'WalletTransaction') return txRepo;
+            if (entity.name === 'AdminActionLog') return { create: jest.fn(), save: jest.fn() };
+            return null;
+          },
+        }),
+    };
+    const walletService: any = { payoutSession: jest.fn() };
+    const svc = new AdminService(dataSource, notificationStub as any, walletService);
+    const tx = await svc.topUpWallet({ walletId: 'w1', amount: '50', adminNote: 'adjust' }, 'admin-1');
+    expect(wallet.balance).toBe('50.00');
+    expect(tx.category).toBe('ADJUSTMENT');
+  });
 });

@@ -12,6 +12,7 @@ import { ManualPayoutDto } from './dto/manual-payout.dto';
 import { CompleteRefundDto } from './dto/complete-refund.dto';
 import { SwapTherapistDto } from './dto/swap-therapist.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
+import { TopupDto } from './dto/topup.dto';
 
 @Injectable()
 export class AdminService {
@@ -149,6 +150,42 @@ export class AdminService {
     await this.walletService.payoutSession(dto.sessionId, { adminNote: dto.adminNote });
     await this.logAdminAction(adminId, 'MANUAL_PAYOUT', 'session', dto.sessionId, {
       adminNote: dto.adminNote,
+    });
+  }
+
+  async topUpWallet(dto: TopupDto, adminId?: string): Promise<WalletTransaction> {
+    if (!dto.adminNote || dto.adminNote.trim().length === 0) {
+      throw new BadRequestException('admin_note wajib diisi');
+    }
+    const amount = Number(dto.amount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      throw new BadRequestException('Amount tidak valid');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const walletRepo = manager.getRepository(Wallet);
+      const txRepo = manager.getRepository(WalletTransaction);
+
+      const wallet = await walletRepo.findOne({ where: { id: dto.walletId } });
+      if (!wallet) throw new BadRequestException('Wallet tidak ditemukan');
+
+      wallet.balance = (Number(wallet.balance) + amount).toFixed(2);
+
+      const tx = txRepo.create({
+        wallet,
+        amount: amount.toFixed(2),
+        type: 'CREDIT',
+        category: 'ADJUSTMENT',
+        adminNote: dto.adminNote,
+      });
+
+      await walletRepo.save(wallet);
+      const savedTx = await txRepo.save(tx);
+      await this.logAdminAction(adminId, 'TOPUP_WALLET', 'wallet', wallet.id, {
+        amount: tx.amount,
+        adminNote: tx.adminNote,
+      });
+      return savedTx;
     });
   }
 

@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGenerat
 import { Wallet } from './wallet.entity';
 
 export type WalletTransactionType = 'CREDIT' | 'DEBIT';
-export type WalletTransactionCategory = 'SESSION_FEE' | 'FORFEIT_COMPENSATION' | 'WITHDRAWAL';
+export type WalletTransactionCategory = 'SESSION_FEE' | 'FORFEIT_COMPENSATION' | 'WITHDRAWAL' | 'ADJUSTMENT';
 
 @Entity({ name: 'wallet_transactions' })
 export class WalletTransaction {
