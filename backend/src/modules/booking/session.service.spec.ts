@@ -1,5 +1,6 @@
 import { SessionService } from './session.service';
 import { SlotService } from './slot.service';
+import { ForbiddenException } from '@nestjs/common';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -137,7 +138,7 @@ describe('SessionService cancel logic', () => {
   });
 
   it('schedulePendingSession should align slot, lock and set status', async () => {
-    const booking = { id: 'b-lock', therapist: { id: 't-lock' } };
+    const booking = { id: 'b-lock', therapist: { id: 't-lock' }, user: { id: 'u-patient' } };
     const session = {
       id: 's-lock',
       booking,
@@ -168,9 +169,47 @@ describe('SessionService cancel logic', () => {
     const svc = new SessionService(dataSource, walletService, slotService, payoutQueue as any);
     const scheduledAt = new Date(Date.now() + ONE_HOUR_MS * 2);
     scheduledAt.setMinutes(0, 0, 0);
-    const result = await svc.schedulePendingSession('s-lock', scheduledAt);
+    const result = await svc.schedulePendingSession('s-lock', scheduledAt, {
+      id: 'u-patient',
+      role: 'PATIENT',
+    });
     expect(result.status).toBe('SCHEDULED');
     expect(result.scheduledAt).toEqual(scheduledAt);
     expect(qb.setLock).toHaveBeenCalledWith('pessimistic_write');
+  });
+
+  it('schedulePendingSession should reject patient scheduling others booking', async () => {
+    const booking = { id: 'b-lock', therapist: { id: 't-lock' }, user: { id: 'owner' } };
+    const session = {
+      id: 's-lock',
+      booking,
+      therapist: { id: 't-lock' },
+      status: 'PENDING_SCHEDULING',
+      scheduledAt: null,
+    };
+    const sessionRepo = {
+      findOne: jest.fn().mockResolvedValue(session),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(0),
+      }),
+    };
+    const dataSource: any = {
+      transaction: async (_iso: any, fn: any) =>
+        fn({
+          getRepository: (entity: any) => {
+            if (entity.name === 'Session') return sessionRepo;
+            return null;
+          },
+        }),
+    };
+    const svc = new SessionService(dataSource, walletService, slotService, payoutQueue as any);
+    const scheduledAt = new Date(Date.now() + ONE_HOUR_MS * 2);
+    scheduledAt.setMinutes(0, 0, 0);
+    await expect(
+      svc.schedulePendingSession('s-lock', scheduledAt, { id: 'other-user', role: 'PATIENT' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

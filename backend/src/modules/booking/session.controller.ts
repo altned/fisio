@@ -27,8 +27,11 @@ export class SessionController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT', 'ADMIN')
   @Throttle(10, 60)
-  schedule(@Param('id') id: string, @Body('scheduledAt') scheduledAt: string) {
-    return this.sessionService.schedulePendingSession(id, new Date(scheduledAt));
+  schedule(@Req() req: any, @Param('id') id: string, @Body('scheduledAt') scheduledAt: string) {
+    return this.sessionService.schedulePendingSession(id, new Date(scheduledAt), {
+      id: req.user?.id,
+      role: req.user?.role,
+    });
   }
 
   @Post('expire/run')

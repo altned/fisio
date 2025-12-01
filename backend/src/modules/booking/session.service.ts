@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { DataSource, Repository } from 'typeorm';
 import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
+import { UserRole } from '../../domain/entities/user.entity';
 import { WalletService } from '../wallet/wallet.service';
 import { SlotService } from './slot.service';
 
@@ -93,7 +94,11 @@ export class SessionService {
     return result.affected ?? 0;
   }
 
-  async schedulePendingSession(sessionId: string, scheduledAt: Date): Promise<Session> {
+  async schedulePendingSession(
+    sessionId: string,
+    scheduledAt: Date,
+    actor?: { id?: string; role?: UserRole },
+  ): Promise<Session> {
     if (!this.slotService.isSlotAligned(scheduledAt)) {
       throw new BadRequestException('Slot harus pada menit :00 atau :30');
     }
@@ -105,11 +110,15 @@ export class SessionService {
       const sessionRepo = manager.getRepository(Session);
       const session = await sessionRepo.findOne({
         where: { id: sessionId },
-        relations: ['booking', 'booking.therapist'],
+        relations: ['booking', 'booking.therapist', 'booking.user'],
       });
       if (!session) throw new BadRequestException('Session tidak ditemukan');
       if (session.status !== 'PENDING_SCHEDULING') {
         throw new BadRequestException('Session tidak dapat dijadwalkan');
+      }
+
+      if (actor?.role === 'PATIENT' && actor.id && session.booking.user.id !== actor.id) {
+        throw new ForbiddenException('Tidak boleh menjadwalkan booking milik pengguna lain');
       }
 
       await this.assertSlotAvailability(sessionRepo, session.booking.therapist.id, scheduledAt);

@@ -4,6 +4,15 @@ import { AppModule } from './modules/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const allowOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['http://localhost:3000', 'http://localhost:3001'];
+  app.enableCors({
+    origin: allowOrigins,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  });
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
   // eslint-disable-next-line no-console
