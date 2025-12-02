@@ -26,6 +26,17 @@
 - **Notification/Chat**: Hooks siap, chat Firestore; ChatService/NotificationService sudah stub/log/fcm/WA.
 
 ## 2) Admin Web (Next.js) — Roadmap
+### Checklist (tandai saat selesai)
+- [x] Setup env (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_ADMIN_TOKEN`), fetcher wrapper.
+- [x] Layout + auth shell (input base URL/token, simpan di localStorage).
+- [ ] Booking list + filter/pagination + aksi (confirm payment, swap, detail).
+- [ ] Booking detail + sesi (schedule pending, manual payout).
+- [ ] Payment confirm form.
+- [ ] Wallet detail + topup/withdraw + transaksi list.
+- [ ] Admin action logs list + filter.
+- [ ] Ops utilities (run timeout/expire/chat-lock) + feedback.
+- [ ] QA: lint + E2E smoke (booking → confirm → swap → topup → logs).
+
 ### Env & Config
 - `NEXT_PUBLIC_API_BASE_URL` — base URL backend.
 - `NEXT_PUBLIC_ADMIN_TOKEN` — JWT ADMIN untuk sesi dev/staging (sementara; nanti ganti auth proper).

@@ -1,31 +1,32 @@
+import { SettingsBar } from "../components/SettingsBar";
 import styles from "./page.module.css";
 
-const quickLinks = [
+const cards = [
   {
     title: "Booking Ops",
-    description: "Cari & kelola booking, konfirmasi pembayaran, swap terapis.",
+    description: "Cari & kelola booking, konfirmasi pembayaran, swap/jadwalkan sesi.",
     items: [
-      { label: "Booking list", hint: "GET /bookings?status=PAID&therapistId=..." },
+      { label: "Booking list", hint: "GET /bookings?status=..." },
       { label: "Confirm payment", hint: "POST /payment/confirm" },
       { label: "Swap therapist", hint: "PATCH /admin/bookings/:id/swap-therapist" },
     ],
   },
   {
     title: "Wallet & Revenue",
-    description: "Topup/withdraw manual, payout pro-rata, audit finansial.",
+    description: "Topup/withdraw manual, manual payout per sesi, transaksi & stats.",
     items: [
-      { label: "Wallet topup", hint: "POST /admin/wallets/:id/topup" },
-      { label: "Withdraw", hint: "POST /admin/wallets/:id/withdraw" },
+      { label: "Topup/Withdraw", hint: "POST /admin/wallets/:id/topup|withdraw" },
       { label: "Manual payout", hint: "POST /admin/sessions/:id/payout" },
+      { label: "Monthly stats", hint: "GET /wallets/:id/stats/monthly" },
     ],
   },
   {
-    title: "Audit & Logs",
-    description: "Pantau jejak aksi admin dan webhook inbound signature.",
+    title: "Audit & Ops",
+    description: "Jejak aksi admin, webhook HMAC, dan trigger job ops.",
     items: [
-      { label: "Admin action logs", hint: "GET /admin/logs" },
+      { label: "Admin logs", hint: "GET /admin/logs" },
       { label: "Webhook test", hint: "POST /webhooks/test (HMAC)" },
-      { label: "Queue monitors", hint: "booking-expiry/chat-lock/timeout/payout" },
+      { label: "Jobs", hint: "/bookings/timeout|expire|chat-lock/run" },
     ],
   },
 ];
@@ -33,41 +34,22 @@ const quickLinks = [
 export default function Home() {
   return (
     <main className={styles.shell}>
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.eyebrow}>Fisioku Prime Care · Admin</p>
-          <h1>Operasional & Finansial</h1>
-          <p className={styles.subtitle}>
-            Halaman ini jadi landasan untuk dashboard admin. Mulai dengan mengatur base URL API dan token
-            admin, lalu bangun halaman booking, pembayaran, wallet, dan audit.
-          </p>
+      <div className={styles.toolbar}>
+        <div className={styles.titleGroup}>
+          <h1>Fisioku Admin</h1>
+          <p>Set API & token untuk mulai mengelola booking, pembayaran, dan wallet.</p>
         </div>
-        <div className={styles.meta}>
-          <div className={styles.metaItem}>
-            <span>Env</span>
-            <code>NEXT_PUBLIC_API_BASE_URL</code>
-            <code>NEXT_PUBLIC_ADMIN_TOKEN</code>
-          </div>
-          <div className={styles.metaItem}>
-            <span>Perlu asap</span>
-            <ul>
-              <li>Booking list + aksi</li>
-              <li>Wallet ops (topup/withdraw)</li>
-              <li>Admin action logs</li>
-            </ul>
-          </div>
-        </div>
-      </header>
+      </div>
+
+      <SettingsBar />
 
       <section className={styles.grid}>
-        {quickLinks.map((section) => (
-          <article key={section.title} className={styles.card}>
-            <header>
-              <h2>{section.title}</h2>
-              <p>{section.description}</p>
-            </header>
+        {cards.map((card) => (
+          <article key={card.title} className={styles.card}>
+            <h2>{card.title}</h2>
+            <p>{card.description}</p>
             <ul>
-              {section.items.map((item) => (
+              {card.items.map((item) => (
                 <li key={item.label}>
                   <span>{item.label}</span>
                   <code>{item.hint}</code>
@@ -76,24 +58,6 @@ export default function Home() {
             </ul>
           </article>
         ))}
-      </section>
-
-      <section className={styles.nextSteps}>
-        <div>
-          <h3>Langkah berikutnya</h3>
-          <ol>
-            <li>Buat client fetcher (Bearer admin token, base URL API backend).</li>
-            <li>Bangun halaman Booking List dengan filter & aksi (confirm/swap).</li>
-            <li>Tambahkan Wallet detail + topup/withdraw + transaksi.</li>
-            <li>Render admin_action_logs untuk audit.</li>
-          </ol>
-        </div>
-        <div className={styles.callout}>
-          <p>
-            Gunakan endpoint staging dan token ADMIN saja. Hindari data produksi sebelum konfigurasi HTTPS &
-            CORS final.
-          </p>
-        </div>
       </section>
     </main>
   );

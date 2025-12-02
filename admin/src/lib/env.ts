@@ -1,10 +1,6 @@
-const requiredEnv = ['NEXT_PUBLIC_API_BASE_URL'] as const;
-
-type RequiredEnv = (typeof requiredEnv)[number];
-
 const cache: Record<string, string> = {};
 
-export function getEnv(name: RequiredEnv): string {
+export function getEnv(name: 'NEXT_PUBLIC_API_BASE_URL'): string {
   if (cache[name]) return cache[name];
   const value = process.env[name];
   if (!value || value.trim().length === 0) {

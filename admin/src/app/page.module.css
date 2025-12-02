@@ -1,104 +1,54 @@
 .shell {
   min-height: 100vh;
-  padding: 48px 32px 64px;
+  padding: 32px 24px 48px;
   background: radial-gradient(120% 140% at 10% 10%, #f1f5f9 0%, #ffffff 60%, #eef2ff 100%);
-  color: #0f172a;
-  font-family: var(--font-geist-sans);
+  display: grid;
+  gap: 20px;
+}
+
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 32px;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.hero {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-  align-items: flex-start;
+.titleGroup h1 {
+  margin: 0;
+  font-size: 32px;
 }
 
-.eyebrow {
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 8px;
-}
-
-.hero h1 {
-  font-size: 42px;
-  line-height: 1.1;
-  margin: 0 0 12px;
-}
-
-.subtitle {
-  font-size: 16px;
-  line-height: 1.5;
-  color: #475569;
-  max-width: 720px;
-}
-
-.meta {
-  display: grid;
-  gap: 12px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 16px;
-  padding: 16px;
-}
-
-.metaItem {
-  display: grid;
-  gap: 6px;
-}
-
-.metaItem span {
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.metaItem code {
-  display: inline-block;
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  margin-right: 8px;
-}
-
-.metaItem ul {
-  padding-left: 16px;
+.titleGroup p {
+  margin: 4px 0 0;
   color: #475569;
   font-size: 14px;
-  line-height: 1.5;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.card {
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 16px;
-  padding: 18px 18px 12px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-  display: grid;
   gap: 12px;
 }
 
+.card {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 8px;
+}
+
 .card h2 {
-  font-size: 18px;
-  margin: 0 0 4px;
+  margin: 0;
+  font-size: 16px;
 }
 
 .card p {
+  margin: 0;
   color: #475569;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .card ul {
@@ -106,12 +56,12 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .card li {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .card li span {
@@ -125,54 +75,4 @@
   padding: 4px 8px;
   border-radius: 8px;
   width: fit-content;
-}
-
-.nextSteps {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-  align-items: center;
-}
-
-.nextSteps h3 {
-  margin-bottom: 8px;
-}
-
-.nextSteps ol {
-  padding-left: 18px;
-  color: #334155;
-  line-height: 1.6;
-}
-
-.callout {
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
-  color: #fff;
-  padding: 16px;
-  border-radius: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-@media (max-width: 900px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-
-  .nextSteps {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .shell {
-    padding: 32px 20px 48px;
-  }
-
-  .hero h1 {
-    font-size: 32px;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }

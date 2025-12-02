@@ -8,7 +8,7 @@ export type FetchOptions = {
   timeoutMs?: number;
 };
 
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   baseUrl: string,
   path: string,
   options: FetchOptions = {},
