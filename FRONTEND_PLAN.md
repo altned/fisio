@@ -9,7 +9,8 @@
   - `POST /sessions/:id/complete|cancel|schedule` — schedule pending session (PATIENT/ADMIN, ownership check).
   - Ops: `/bookings/timeout/run`, `/bookings/expire/run`, `/bookings/chat-lock/run` (ADMIN).
 - **Payment**:
-  - `POST /payment/initiate|proof` (PATIENT), `POST /payment/confirm` (ADMIN) — manual bank/QRIS.
+  - `POST /payment/initiate` (PATIENT) — buat transaksi Midtrans Core (VA/QR/e-wallet), kembalikan instruksi/token/expiry.
+  - Webhook Midtrans (server) menandai `PAID`/`CANCELLED`/`EXPIRED`; tidak ada upload bukti atau konfirmasi manual.
 - **Admin Ops**:
   - `PATCH /admin/bookings/:id/swap-therapist`
   - `POST /admin/bookings/refund`
@@ -29,13 +30,13 @@
 ### Checklist (tandai saat selesai)
 - [x] Setup env (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_ADMIN_TOKEN`), fetcher wrapper.
 - [x] Layout + auth shell (input base URL/token, simpan di localStorage).
-- [ ] Booking list + filter/pagination + aksi (confirm payment, swap, detail).
+- [ ] Booking list + filter/pagination + aksi (lihat status bayar, swap, detail).
 - [ ] Booking detail + sesi (schedule pending, manual payout).
-- [ ] Payment confirm form.
+- [ ] Payment status Midtrans (detail channel/token/expiry, opsi override mark paid jika darurat).
 - [ ] Wallet detail + topup/withdraw + transaksi list.
 - [ ] Admin action logs list + filter.
 - [ ] Ops utilities (run timeout/expire/chat-lock) + feedback.
-- [ ] QA: lint + E2E smoke (booking → confirm → swap → topup → logs).
+- [ ] QA: lint + E2E smoke (booking → init payment → swap → topup → logs).
 
 ### Env & Config
 - `NEXT_PUBLIC_API_BASE_URL` — base URL backend.
@@ -47,11 +48,11 @@
    - Layout dengan field base URL + token (disimpan di localStorage) + proteksi route sederhana.
 2. **Booking List**
    - Tabel dengan filter: status, therapistId, userId, date range; pagination.
-   - Aksi row: confirm payment (ADMIN), swap therapist (modal pilih therapistId), buka detail.
+   - Aksi row: lihat status pembayaran Midtrans (token/channel/expiry), swap therapist (modal pilih therapistId), buka detail.
 3. **Booking Detail**
    - Data booking + sessions; aksi: schedule pending session (ADMIN), run accept/decline? (opsional), trigger manual payout (ADMIN) per session.
 4. **Payment Ops**
-   - Form confirm payment (bookingId); tampilkan therapistRespondBy; status badge.
+   - Panel detail pembayaran Midtrans: status terbaru, channel instruksi, expiry, link/token Snap/Core (jika diperlukan), tombol refresh status; opsi override mark paid (ADMIN) hanya untuk incident.
 5. **Wallet Ops**
    - Wallet detail (balance, monthly stats), transaksi list.
    - Aksi: topup (amount, adminNote), withdraw (amount, adminNote).
@@ -76,7 +77,7 @@
 - Booking create:
   - Slot selector 90 menit (:00/:30) dengan lead time > 1h untuk instant.
   - Locked address + therapist choice.
-  - Payment manual: tampilkan instruksi bank/QRIS (dari `/payment/initiate`), upload bukti (`/payment/proof`), pantau status PENDING→PAID.
+  - Payment Midtrans Core: panggil `/payment/initiate`, render instruksi channel (VA/QR/e-wallet) + expiry, tampilkan countdown & tombol copy/QR, polling status atau terima push dari webhook backend.
 - Booking detail & sesi:
   - Lihat status booking/sesi; jadwalkan sesi pending (paket) via `/sessions/:id/schedule`.
   - Cancel (sementara belum ada endpoint khusus; gunakan session cancel jika < >1h?).

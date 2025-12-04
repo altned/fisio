@@ -31,12 +31,15 @@ Aplikasi on-demand fisioterapi home-visit untuk Pasien (Mobile), Terapis (Mobile
 - Wallet display: balance nyata tidak pernah di-reset; monthly stats hanya via query (visual reset).
 - Admin transfer/withdraw: DEBIT wajib `admin_note` dan terlihat di riwayat terapis.
 
-### F. Pembayaran (Revisi)
-- Metode: Transfer bank ke rekening perusahaan dan QRIS statis (gambar QR).
-- Alur: Sistem menghasilkan instruksi pembayaran (nomor rekening / URL gambar QR) yang bisa di-copy; status booking `PENDING`; admin menandai `PAID` setelah verifikasi mutasi/manual reconciliation.
-- User dapat unggah bukti bayar (URL gambar) untuk membantu verifikasi admin.
-- Tidak ada Midtrans/webhook; pembayaran bersifat offline/settlement manual.
-- Refund: Decline/timeout terapis → booking `CANCELLED`, `refund_status=PENDING`; admin transfer balik manual dan tandai `refund_status=COMPLETED` dengan reference/note.
+### F. Pembayaran (Midtrans Core API)
+- Metode: channel Midtrans (VA, QRIS dinamis, e-wallet) via Core API; `order_id` menggunakan `booking.id`, `gross_amount` = `totalPrice`.
+- Alur: `POST /payment/initiate` memanggil Midtrans Core, menyimpan token/instruksi/expiry; status booking tetap `PENDING` sampai webhook settlement/capture.
+- Webhook: endpoint `POST /webhooks/midtrans` memverifikasi signature; mapping status:
+  - `settlement|capture` → booking `PAID`, set `therapist_respond_by`, `chat_locked_at`, notifikasi terapis/pasien.
+  - `pending` → simpan instruksi/expiry, tetap `PENDING`.
+  - `expire|cancel|deny` → booking `CANCELLED`, `refund_status=PENDING` jika perlu.
+- Upload bukti & konfirmasi manual dihapus; rekonsiliasi memakai webhook/idempoten status Midtrans.
+- Refund: bila terapis decline/timeout atau payment expire/cancel, set `refund_status=PENDING`; admin menyelesaikan transfer balik dan menandai `refund_status=COMPLETED` dengan reference/note.
 
 ### D. Review & Rating
 - Dashboard menampilkan `THERAPISTS.average_rating` dan `total_reviews` sebagai cache.

@@ -26,6 +26,7 @@
   - Pasien: `patient@example.com`
   - Terapis: `therapist@example.com` + wallet
   - Paket: Single Session (1), 4-Session Package (4)
+- Buat JWT dummy: `npm run token:issue -- --role=ADMIN --sub=<userId>` (butuh `JWT_SECRET` di env)
 
 ## Docker Compose (PostgreSQL & Redis)
 1. Dari root repo: `docker compose up -d`
@@ -34,17 +35,16 @@
    - `REDIS_URL=redis://localhost:6379`
 3. Jalankan migrasi, lalu start dev server seperti langkah di atas.
 
-## Payment (Bank Transfer & QRIS Statis)
+## Payment (Midtrans Core API)
 - Konfigurasi env:
-  - `COMPANY_BANK_NAME=...`
-  - `COMPANY_BANK_ACCOUNT=...`
-  - `COMPANY_BANK_ACCOUNT_NAME=...`
-  - `QRIS_IMAGE_URL=...` (link ke gambar QR statis)
-- Flow: Backend memberikan instruksi pembayaran (rekening/QRIS) pada init; user dapat upload bukti bayar (URL gambar); admin menandai `PAID` setelah verifikasi manual.
-- Endpoint:
-  - `POST /payment/initiate` (pilih metode BANK_TRANSFER/QRIS, kembalikan instruksi rekening/QRIS)
-  - `POST /payment/proof` (kirim URL bukti bayar)
-  - `POST /payment/confirm` (admin menandai PAID setelah verifikasi)
+  - `MIDTRANS_SERVER_KEY=...`
+  - `MIDTRANS_CLIENT_KEY=...`
+  - `MIDTRANS_IS_PRODUCTION=false|true`
+- Flow: Backend membuat transaksi via Midtrans Core (`order_id = booking.id`, `gross_amount = totalPrice`), mengembalikan instruksi channel (VA/QR/e-wallet) ke klien. Status `PAID` hanya di-set melalui webhook Midtrans dengan verifikasi signature.
+- Endpoint (target):
+  - `POST /payment/initiate` — buat charge Midtrans, kembalikan instruksi/token/expiry.
+  - `POST /webhooks/midtrans` — terima notifikasi Midtrans, verifikasi signature, set status booking (settlement/capture → PAID; expire/cancel/deny → CANCELLED + refund_status PENDING).
+- Upload bukti & confirm manual tidak dipakai lagi (legacy).
 
 ## Acceptance & Refund
 - Acceptance/decline terapis:

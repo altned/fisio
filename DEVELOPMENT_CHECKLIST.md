@@ -20,10 +20,16 @@
 - [x] Profile guard: tolak booking jika user.is_profile_complete = false.
 - [x] Hitung snapshot pricing (admin_fee_amount, therapist_net_total) pada booking create.
 
-- [x] **Phase 3 — Payment & Acceptance**
+- [x] **Phase 3 — Payment & Acceptance (Legacy Manual)**
   - [x] Pembayaran manual: instruksi rekening/QRIS, upload bukti bayar, konfirmasi admin set PAID.
   - [x] Terapis accept/timeout: 5m instant, 30m regular; decline/timeout → booking CANCELLED + refund_status PENDING.
   - [x] Aktivasi chat baseline: set chat_locked_at = scheduled_at + 24h pada payment confirm/accept.
+
+- [ ] **Phase 3B — Migrasi Midtrans Core API**
+  - [ ] Tambah kolom booking untuk Midtrans (payment_provider/status/order_id/token/expiry/payload).
+  - [ ] Integrasi `POST /payment/initiate` ke Midtrans Core (VA/QRIS/e-wallet), simpan instruksi/expiry.
+  - [ ] Webhook Midtrans + verifikasi signature → set booking PAID/EXPIRED/CANCELLED idempoten; hilangkan upload bukti/confirm manual.
+  - [ ] Update klien (mobile/web) untuk render instruksi Midtrans + polling/status webhook.
 
 - [x] **Phase 4 — Session Lifecycle**
   - [x] Transisi status: SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.
@@ -65,5 +71,5 @@
   - [x] Role guard admin/finansial + admin action log (admin_action_logs).
   - [x] Unit/integration tests: booking lock (DB-level) dan payout idempotensi pro-rata; webhook signature & load/perf masih pending.
   - [x] Unit tests: slot alignment/lead time, respond SLA, chat lock time/close room, payout idempotency, monthly stats, cancel/forfeit/expiry count, timeout, slot overlap.
-  - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial (webhook signature belum).
+  - [ ] Load/perf test slot search & wallet ops; security review authz terutama endpoint finansial (termasuk webhook Midtrans signature).
   - [x] Staging verification checklist disiapkan (`STAGING_CHECKLIST.md`).
