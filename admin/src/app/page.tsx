@@ -1,8 +1,8 @@
+'use client';
+
 import { SettingsBar } from "../components/SettingsBar";
 import styles from "./page.module.css";
 import { useRequireAuth } from "../lib/useRequireAuth";
-
-"use client";
 
 const cards = [
   {
