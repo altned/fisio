@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import styles from './page.module.css';
 import { useSettingsStore } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
@@ -70,7 +70,7 @@ export default function PaymentStatusPage() {
     return JSON.stringify(instr);
   }, [detail]);
 
-  async function fetchDetail() {
+  const fetchDetail = useCallback(async () => {
     if (!bookingId.trim()) {
       setError('Isi Booking ID terlebih dahulu');
       return;
@@ -92,7 +92,14 @@ export default function PaymentStatusPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [adminToken, apiBaseUrl, bookingId]);
+
+  useEffect(() => {
+    if (!detail || !bookingId.trim()) return;
+    if (detail.paymentStatus !== 'PENDING') return;
+    const interval = setInterval(() => fetchDetail(), 5000);
+    return () => clearInterval(interval);
+  }, [detail, bookingId, fetchDetail]);
 
   if (!ready) return null;
 
@@ -198,6 +205,19 @@ export default function PaymentStatusPage() {
           <div className={styles.instruction}>
             <div className={styles.label}>Instruction</div>
             <div className={styles.value}>{instructionText ?? '-'}</div>
+          </div>
+          <div className={styles.muted}>
+            {detail.paymentStatus === 'PENDING'
+              ? 'Auto-refresh setiap 5s untuk payment PENDING'
+              : 'Status final (tidak auto-refresh)'}
+            <button
+              className={styles.button}
+              style={{ marginLeft: 12 }}
+              onClick={() => fetchDetail()}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh status'}
+            </button>
           </div>
 
           {detail.sessions && detail.sessions.length > 0 && (

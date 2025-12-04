@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, GoneException } from '@nestjs/common';
+import { Injectable, BadRequestException, GoneException, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Booking, PaymentStatus } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
@@ -47,6 +47,8 @@ type MidtransNotification = {
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly bookingService: BookingService,
@@ -151,6 +153,7 @@ export class PaymentService {
     }
 
     if (!booking) {
+      this.logger.warn(`Webhook Midtrans: booking not found for order_id=${orderId}`);
       throw new BadRequestException('Booking untuk order_id ini tidak ditemukan');
     }
 
@@ -170,6 +173,9 @@ export class PaymentService {
       booking.paymentInstruction = booking.paymentInstruction ?? instruction ?? null;
       booking.paymentExpiryTime = booking.paymentExpiryTime ?? this.parseExpiry(body);
       await bookingRepo.save(booking);
+      this.logger.log(
+        `Webhook Midtrans PENDING order_id=${orderId} booking_id=${booking.id} status=${body.transaction_status}`,
+      );
       return { ok: true, status: 'PENDING' };
     }
 
@@ -209,6 +215,9 @@ export class PaymentService {
           meta: { bookingId: booking.id },
         });
       }
+      this.logger.log(
+        `Webhook Midtrans PAID order_id=${orderId} booking_id=${booking.id} status=${body.transaction_status}`,
+      );
       return { ok: true, status: 'PAID' };
     }
 
@@ -220,6 +229,9 @@ export class PaymentService {
     booking.paymentStatus = nextPaymentStatus;
     booking.paymentPayload = body as Record<string, unknown>;
     await bookingRepo.save(booking);
+    this.logger.warn(
+      `Webhook Midtrans terminal order_id=${orderId} booking_id=${booking.id} paymentStatus=${nextPaymentStatus} tx=${body.transaction_status}`,
+    );
     return { ok: true, status: nextPaymentStatus };
   }
 

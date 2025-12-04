@@ -15,6 +15,7 @@
     "seed": "ts-node src/seeds/seed.ts",
     "token:issue": "ts-node src/scripts/issue-token.ts",
     "midtrans:webhook:send": "ts-node src/scripts/send-midtrans-webhook.ts",
+    "booking:status": "ts-node src/scripts/check-booking-status.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },
