@@ -14,6 +14,7 @@
     "migration:generate": "npm run typeorm -- migration:generate -n",
     "seed": "ts-node src/seeds/seed.ts",
     "token:issue": "ts-node src/scripts/issue-token.ts",
+    "midtrans:webhook:send": "ts-node src/scripts/send-midtrans-webhook.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },
