@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 
 type Args = {
   role?: string;
