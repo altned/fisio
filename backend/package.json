@@ -13,6 +13,7 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:generate": "npm run typeorm -- migration:generate -n",
     "seed": "ts-node src/seeds/seed.ts",
+    "token:issue": "ts-node src/scripts/issue-token.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },
