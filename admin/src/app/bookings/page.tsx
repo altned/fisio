@@ -1,133 +1,243 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import styles from "./bookings.module.css";
-import { SettingsBar } from "../../components/SettingsBar";
-import { useSettingsStore } from "../../store/settings";
-import { apiFetch } from "../../lib/api";
-import type { Booking, Paginated } from "../../types/booking";
+import { useEffect, useMemo, useState } from 'react';
+import styles from './page.module.css';
+import { useSettingsStore } from '../../store/settings';
+import { apiFetch } from '../../lib/api';
 
-const statusOptions = ["", "PENDING", "PAID", "COMPLETED", "CANCELLED"];
+type BookingListItem = {
+  id: string;
+  status: string;
+  paymentStatus: string;
+  paymentProvider?: string;
+  paymentOrderId?: string | null;
+  therapist?: { id: string; fullName?: string };
+  user?: { id: string; fullName?: string };
+  createdAt?: string;
+  paymentExpiryTime?: string | null;
+};
 
-export default function BookingsPage() {
-  const { apiBaseUrl } = useSettingsStore();
-  const [status, setStatus] = useState<string>("");
-  const [therapistId, setTherapistId] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
+type BookingListResponse = {
+  data: BookingListItem[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
+type BookingDetail = BookingListItem & {
+  package?: { id: string; name: string } | null;
+  paymentToken?: string | null;
+  paymentRedirectUrl?: string | null;
+  paymentInstruction?: any | null;
+  therapistRespondBy?: string | null;
+  chatLockedAt?: string | null;
+  sessions?: Array<{ id: string; sequenceOrder: number; status: string; scheduledAt: string | null }>;
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString();
+}
+
+function statusBadgeClass(status: string) {
+  if (status === 'PAID' || status === 'COMPLETED') return styles.badge;
+  if (status === 'PENDING') return `${styles.badge} ${styles.warn}`;
+  return `${styles.badge} ${styles.danger}`;
+}
+
+export default function BookingListPage() {
+  const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+  const [statusFilter, setStatusFilter] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
+  const [items, setItems] = useState<BookingListItem[]>([]);
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Paginated<Booking> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    if (therapistId) params.set("therapistId", therapistId);
-    if (userId) params.set("userId", userId);
-    params.set("page", String(page));
-    params.set("limit", "20");
-    return params.toString();
-  }, [status, therapistId, userId, page]);
+  const [detail, setDetail] = useState<BookingDetail | null>(null);
 
   useEffect(() => {
-    if (!apiBaseUrl) return;
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    hydrate();
+  }, [hydrate]);
+
+  const filterParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', '20');
+    if (statusFilter) params.set('status', statusFilter);
+    return params.toString();
+  }, [page, statusFilter]);
+
+  async function loadList() {
+    if (!apiBaseUrl || !adminToken) {
+      setError('Isi API Base URL dan Admin Token di Settings Bar');
+      return;
+    }
     setLoading(true);
     setError(null);
-    apiFetch<Paginated<Booking>>(apiBaseUrl, `/bookings?${queryString}`)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message || "Gagal memuat booking");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    try {
+      const res = await apiFetch<BookingListResponse>(apiBaseUrl, `/bookings?${filterParams}`, {
+        tokenOverride: adminToken,
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [apiBaseUrl, queryString]);
+      setItems(res.data);
+      setDetail(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadDetail(id: string) {
+    if (!apiBaseUrl || !adminToken) {
+      setError('Isi API Base URL dan Admin Token di Settings Bar');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch<BookingDetail>(apiBaseUrl, `/bookings/${id}`, {
+        tokenOverride: adminToken,
+      });
+      setDetail(data);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Bookings</p>
-          <h1>Daftar Booking</h1>
-          <p className={styles.subtitle}>Filter berdasarkan status/therapist/user. Aksi lain menyusul.</p>
-        </div>
-      </div>
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <h1>Booking List</h1>
+        <p className={styles.muted}>
+          Tampilkan status booking dan pembayaran (Midtrans). Klik baris untuk melihat detail dan instruksi
+          channel.
+        </p>
+      </header>
 
-      <SettingsBar />
-
-      <section className={styles.filters}>
-        <div>
-          <label>Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            {statusOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt || "Semua"}
-              </option>
-            ))}
+      <div className={styles.controls}>
+        <div className={styles.field}>
+          <label htmlFor="status">Booking Status</label>
+          <select id="status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="PENDING">PENDING</option>
+            <option value="PAID">PAID</option>
+            <option value="COMPLETED">COMPLETED</option>
+            <option value="CANCELLED">CANCELLED</option>
           </select>
         </div>
-        <div>
-          <label>Therapist ID</label>
-          <input value={therapistId} onChange={(e) => setTherapistId(e.target.value)} placeholder="uuid" />
+        <div className={styles.field}>
+          <label htmlFor="paymentStatus">Payment Status</label>
+          <select
+            id="paymentStatus"
+            value={paymentStatusFilter}
+            onChange={(e) => setPaymentStatusFilter(e.target.value)}
+          >
+            <option value="">All</option>
+            <option value="PENDING">PENDING</option>
+            <option value="PAID">PAID</option>
+            <option value="EXPIRED">EXPIRED</option>
+            <option value="CANCELLED">CANCELLED</option>
+            <option value="FAILED">FAILED</option>
+          </select>
         </div>
-        <div>
-          <label>User ID</label>
-          <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="uuid" />
-        </div>
-      </section>
+        <button className={styles.button} onClick={loadList} disabled={loading}>
+          {loading ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
 
-      {loading && <div className={styles.notice}>Memuat...</div>}
-      {error && <div className={styles.error}>{error}</div>}
-      {!loading && !error && data && (
-        <>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Status</th>
-                  <th>Terapis</th>
-                  <th>Pasien</th>
-                  <th>Dibuat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.data.map((b) => (
-                  <tr key={b.id}>
-                    <td className={styles.mono}>{b.id}</td>
-                    <td>{b.status}</td>
-                    <td className={styles.mono}>{b.therapist?.id}</td>
-                    <td className={styles.mono}>{b.user?.id}</td>
-                    <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={styles.pagination}>
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-              Prev
-            </button>
-            <span>
-              Page {page} / {Math.max(1, Math.ceil(data.total / data.limit))}
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={data.total <= data.limit * page}
-            >
-              Next
-            </button>
-          </div>
-        </>
+      {error && (
+        <div className={styles.card}>
+          <div className={`${styles.badge} ${styles.danger}`}>Error</div>
+          <div className={styles.value}>{error}</div>
+        </div>
       )}
-      {!loading && !error && !data && <div className={styles.notice}>Set API base URL & token untuk memulai.</div>}
-    </div>
+
+      {items.length > 0 && (
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Booking</th>
+              <th>Payment</th>
+              <th>Channel</th>
+              <th>Patient</th>
+              <th>Therapist</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items
+              .filter((it) => !paymentStatusFilter || it.paymentStatus === paymentStatusFilter)
+              .map((item) => (
+                <tr key={item.id} onClick={() => loadDetail(item.id)} style={{ cursor: 'pointer' }}>
+                  <td>
+                    <div className={styles.badge}>{item.status}</div>
+                  </td>
+                  <td>
+                    <div className={statusBadgeClass(item.paymentStatus)}>{item.paymentStatus}</div>
+                  </td>
+                  <td>
+                    <div className={styles.value}>{item.paymentProvider ?? '-'}</div>
+                    <div className={styles.muted}>{item.paymentOrderId ?? '-'}</div>
+                  </td>
+                  <td>{item.user?.fullName ?? item.user?.id ?? '-'}</td>
+                  <td>{item.therapist?.fullName ?? item.therapist?.id ?? '-'}</td>
+                  <td>{formatDate(item.createdAt)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      )}
+
+      {detail && (
+        <div className={styles.card}>
+          <div className={styles.grid}>
+            <div>
+              <div className={styles.label}>Booking ID</div>
+              <div className={styles.value}>{detail.id}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Order ID</div>
+              <div className={styles.value}>{detail.paymentOrderId ?? '-'}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Payment Status</div>
+              <div className={statusBadgeClass(detail.paymentStatus)}>{detail.paymentStatus}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Provider</div>
+              <div className={styles.value}>{detail.paymentProvider ?? '-'}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Payment Token</div>
+              <div className={styles.value}>{detail.paymentToken ?? '-'}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Redirect URL</div>
+              <div className={styles.value}>{detail.paymentRedirectUrl ?? '-'}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Payment Expiry</div>
+              <div className={styles.value}>{formatDate(detail.paymentExpiryTime)}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Therapist Respond By</div>
+              <div className={styles.value}>{formatDate(detail.therapistRespondBy)}</div>
+            </div>
+            <div>
+              <div className={styles.label}>Chat Locked At</div>
+              <div className={styles.value}>{formatDate(detail.chatLockedAt)}</div>
+            </div>
+          </div>
+          <div className={styles.label}>Instruction</div>
+          <div className={styles.value}>
+            {detail.paymentInstruction ? JSON.stringify(detail.paymentInstruction) : '-'}
+          </div>
+        </div>
+      )}
+    </main>
   );
 }
