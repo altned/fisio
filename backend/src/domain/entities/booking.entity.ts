@@ -16,6 +16,7 @@ export type BookingStatus = 'PENDING' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 export type PaymentMethod = 'BANK_TRANSFER' | 'QRIS';
 export type BookingType = 'REGULAR' | 'INSTANT';
 export type RefundStatus = 'NONE' | 'PENDING' | 'COMPLETED';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'FAILED';
 
 @Entity({ name: 'bookings' })
 export class Booking {
@@ -51,6 +52,30 @@ export class Booking {
 
   @Column({ name: 'payment_proof_url', type: 'text', nullable: true })
   paymentProofUrl?: string | null;
+
+  @Column({ name: 'payment_provider', type: 'varchar', length: 30, default: 'MIDTRANS' })
+  paymentProvider!: string;
+
+  @Column({ name: 'payment_status', type: 'varchar', length: 20, default: 'PENDING' })
+  paymentStatus!: PaymentStatus;
+
+  @Column({ name: 'payment_order_id', type: 'varchar', length: 64, nullable: true })
+  paymentOrderId!: string | null;
+
+  @Column({ name: 'payment_token', type: 'varchar', length: 160, nullable: true })
+  paymentToken!: string | null;
+
+  @Column({ name: 'payment_redirect_url', type: 'text', nullable: true })
+  paymentRedirectUrl!: string | null;
+
+  @Column({ name: 'payment_instruction', type: 'jsonb', nullable: true })
+  paymentInstruction!: Record<string, unknown> | null;
+
+  @Column({ name: 'payment_expiry_time', type: 'timestamp with time zone', nullable: true })
+  paymentExpiryTime!: Date | null;
+
+  @Column({ name: 'payment_payload', type: 'jsonb', nullable: true })
+  paymentPayload!: Record<string, unknown> | null;
 
   @Column({ name: 'booking_type', type: 'varchar', length: 20, default: 'REGULAR' })
   bookingType!: BookingType;
