@@ -25,10 +25,10 @@
   - [x] Terapis accept/timeout: 5m instant, 30m regular; decline/timeout → booking CANCELLED + refund_status PENDING.
   - [x] Aktivasi chat baseline: set chat_locked_at = scheduled_at + 24h pada payment confirm/accept.
 
-- [ ] **Phase 3B — Migrasi Midtrans Core API**
-  - [ ] Tambah kolom booking untuk Midtrans (payment_provider/status/order_id/token/expiry/payload).
-  - [ ] Integrasi `POST /payment/initiate` ke Midtrans Core (VA/QRIS/e-wallet), simpan instruksi/expiry.
-  - [ ] Webhook Midtrans + verifikasi signature → set booking PAID/EXPIRED/CANCELLED idempoten; hilangkan upload bukti/confirm manual.
+- [x] **Phase 3B — Migrasi Midtrans Core API**
+  - [x] Tambah kolom booking untuk Midtrans (payment_provider/status/order_id/token/expiry/payload).
+  - [x] Integrasi `POST /payment/initiate` ke Midtrans Core (VA/QRIS/e-wallet), simpan instruksi/expiry.
+  - [x] Webhook Midtrans + verifikasi signature → set booking PAID/EXPIRED/CANCELLED idempoten; hilangkan upload bukti/confirm manual.
   - [ ] Update klien (mobile/web) untuk render instruksi Midtrans + polling/status webhook.
 
 - [x] **Phase 4 — Session Lifecycle**

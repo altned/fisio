@@ -30,9 +30,9 @@
 ### Checklist (tandai saat selesai)
 - [x] Setup env (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_ADMIN_TOKEN`), fetcher wrapper.
 - [x] Layout + auth shell (input base URL/token, simpan di localStorage).
-- [ ] Booking list + filter/pagination + aksi (lihat status bayar, swap, detail).
-- [ ] Booking detail + sesi (schedule pending, manual payout).
-- [ ] Payment status Midtrans (detail channel/token/expiry, opsi override mark paid jika darurat).
+- [x] Booking list + filter/pagination + aksi (lihat status bayar, swap, detail).
+- [x] Booking detail/status pembayaran (read-only Midtrans).
+- [ ] Payment status Midtrans (opsi override mark paid jika darurat).
 - [ ] Wallet detail + topup/withdraw + transaksi list.
 - [ ] Admin action logs list + filter.
 - [ ] Ops utilities (run timeout/expire/chat-lock) + feedback.

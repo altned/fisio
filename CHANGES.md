@@ -2,12 +2,12 @@
 
 # Changelog
 
-## 2024-04-XX (Rencana Migrasi Midtrans Core API)
-- Pembayaran manual (transfer/QR statis + upload bukti/confirm admin) akan digantikan Midtrans Core API.
-- Env baru: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION` (hapus kebutuhan `COMPANY_BANK_*`, `QRIS_IMAGE_URL`).
-- Endpoint target:
+## 2025-04-XX (Midtrans Core API Live)
+- Pembayaran manual diganti Midtrans Core API.
+- Env: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`, `MIDTRANS_CALLBACK_URL` (opsional).
+- Endpoint:
   - `POST /payment/initiate` → create charge Midtrans (VA/QR/e-wallet), simpan token/instruksi/expiry.
-  - `POST /webhooks/midtrans` → verifikasi signature, set booking PAID/EXPIRED/CANCELLED idempoten; tidak ada `payment/proof` atau `payment/confirm`.
+  - `POST /webhooks/midtrans` → verifikasi signature_key, set booking payment_status (settlement/capture → PAID; expire/cancel/deny/refund → CANCELLED/EXPIRED) idempoten; upload bukti/confirm manual dinonaktifkan (410).
 - Booking acceptance/timeout tetap berjalan setelah status `PAID` dari webhook.
 
 ## 2024-03-XX
