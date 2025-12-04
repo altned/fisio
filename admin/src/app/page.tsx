@@ -1,5 +1,8 @@
 import { SettingsBar } from "../components/SettingsBar";
 import styles from "./page.module.css";
+import { useRequireAuth } from "../lib/useRequireAuth";
+
+"use client";
 
 const cards = [
   {
@@ -32,6 +35,9 @@ const cards = [
 ];
 
 export default function Home() {
+  const { ready } = useRequireAuth();
+  if (!ready) return null;
+
   return (
     <main className={styles.shell}>
       <div className={styles.toolbar}>

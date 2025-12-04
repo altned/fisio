@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './page.module.css';
 import { useSettingsStore } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
+import { useRequireAuth } from '../../lib/useRequireAuth';
 
 type SessionLite = {
   id: string;
@@ -50,6 +51,7 @@ export default function PaymentStatusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<BookingDetail | null>(null);
+  const { ready } = useRequireAuth();
 
   useEffect(() => {
     hydrate();
@@ -91,6 +93,8 @@ export default function PaymentStatusPage() {
       setLoading(false);
     }
   }
+
+  if (!ready) return null;
 
   return (
     <main className={styles.page}>
