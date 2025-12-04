@@ -1,0 +1,128 @@
+.page {
+  padding: 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inputRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.field input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+}
+
+.button {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);
+}
+
+.statusRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.badge.warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.label {
+  font-size: 12px;
+  color: #475569;
+}
+
+.value {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.instruction {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+}

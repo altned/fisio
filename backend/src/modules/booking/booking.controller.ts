@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, Param } from '@nestjs/common';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -83,5 +83,12 @@ export class BookingController {
   @Roles('ADMIN')
   runChatLock() {
     return this.chatLockService.lockChats();
+  }
+
+  @Get(':id')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN')
+  detail(@Param('id') id: string) {
+    return this.bookingService.getDetail(id);
   }
 }

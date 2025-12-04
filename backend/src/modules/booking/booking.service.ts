@@ -266,4 +266,15 @@ export class BookingService {
     const [data, total] = await qb.getManyAndCount();
     return { data, page, limit, total };
   }
+
+  async getDetail(bookingId: string) {
+    const repo = this.dataSource.getRepository(Booking);
+    const booking = await repo.findOne({
+      where: { id: bookingId },
+      relations: ['user', 'therapist', 'package', 'sessions'],
+      order: { sessions: { sequenceOrder: 'ASC' } as any },
+    });
+    if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+    return booking;
+  }
 }

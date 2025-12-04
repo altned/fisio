@@ -7,7 +7,7 @@ const cards = [
     description: "Cari & kelola booking, konfirmasi pembayaran, swap/jadwalkan sesi.",
     items: [
       { label: "Booking list", hint: "GET /bookings?status=..." },
-      { label: "Confirm payment", hint: "POST /payment/confirm" },
+      { label: "Payment status", hint: "GET /bookings/:id (Midtrans read-only)" },
       { label: "Swap therapist", hint: "PATCH /admin/bookings/:id/swap-therapist" },
     ],
   },
