@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 type Args = {
   orderId?: string;
