@@ -48,6 +48,18 @@ function statusBadgeClass(status: string) {
   return `${styles.badge} ${styles.danger}`;
 }
 
+function formatInstruction(instr: any): string {
+  if (!instr) return '-';
+  if (instr.type === 'VA') {
+    return `VA ${instr.bank?.toUpperCase?.() ?? ''} • ${instr.account ?? '-'}`;
+  }
+  if (instr.type === 'qris' || instr.type === 'QRIS' || instr.type === 'gopay' || instr.type === 'GOPAY') {
+    const action = instr.actions?.[0]?.url ?? instr.actions?.[0]?.deeplink ?? null;
+    return action ? `QR/E-Wallet • ${action}` : 'QR/E-Wallet';
+  }
+  return JSON.stringify(instr);
+}
+
 export default function BookingListPage() {
   const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
   const [statusFilter, setStatusFilter] = useState('');
@@ -119,19 +131,6 @@ export default function BookingListPage() {
     const interval = setInterval(() => loadDetail(activeId), 5000);
     return () => clearInterval(interval);
   }, [detail, activeId, loadDetail]);
-
-  const instructionText = useMemo(() => {
-    if (!detail?.paymentInstruction) return '-';
-    const instr = detail.paymentInstruction;
-    if (instr.type === 'VA') {
-      return `VA ${instr.bank?.toUpperCase?.() ?? ''} • ${instr.account ?? '-'}`;
-    }
-    if (instr.type === 'qris' || instr.type === 'gopay' || instr.type === 'QRIS' || instr.type === 'GOPAY') {
-      const action = instr.actions?.[0]?.url ?? instr.actions?.[0]?.deeplink ?? null;
-      return action ? `QR/E-Wallet • ${action}` : 'QR/E-Wallet';
-    }
-    return JSON.stringify(instr);
-  }, [detail]);
 
   if (!ready) return null;
 
@@ -248,7 +247,12 @@ export default function BookingListPage() {
             </div>
             <div>
               <div className={styles.label}>Payment Expiry</div>
-              <div className={styles.value}>{formatDate(detail.paymentExpiryTime)}</div>
+              <div className={styles.value}>
+                {formatDate(detail.paymentExpiryTime)}
+                {detail.paymentExpiryTime && (
+                  <span className={styles.muted}> {new Date(detail.paymentExpiryTime) < new Date() ? '(expired)' : ''}</span>
+                )}
+              </div>
             </div>
             <div>
               <div className={styles.label}>Therapist Respond By</div>
@@ -260,7 +264,7 @@ export default function BookingListPage() {
             </div>
           </div>
           <div className={styles.label}>Instruction</div>
-          <div className={styles.value}>{instructionText}</div>
+          <div className={styles.value}>{formatInstruction(detail.paymentInstruction)}</div>
           <div className={styles.muted}>
             {detail.paymentStatus === 'PENDING'
               ? 'Auto-refresh setiap 5s untuk payment PENDING'
