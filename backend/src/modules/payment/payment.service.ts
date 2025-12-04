@@ -142,7 +142,7 @@ export class PaymentService {
 
     if (!booking && orderId) {
       const [maybeBookingId] = orderId.split('-');
-      if (maybeBookingId) {
+      if (maybeBookingId && this.isUuid(maybeBookingId)) {
         booking = await bookingRepo.findOne({
           where: { id: maybeBookingId },
           relations: ['therapist', 'therapist.user', 'user'],
@@ -365,5 +365,11 @@ export class PaymentService {
     if (!timeString) return null;
     const parsed = new Date(timeString);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      value,
+    );
   }
 }
