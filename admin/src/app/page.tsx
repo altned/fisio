@@ -1,5 +1,8 @@
 'use client';
 
+'use client';
+
+import Link from "next/link";
 import { SettingsBar } from "../components/SettingsBar";
 import styles from "./page.module.css";
 import { useRequireAuth } from "../lib/useRequireAuth";
@@ -7,7 +10,7 @@ import { useRequireAuth } from "../lib/useRequireAuth";
 const cards = [
   {
     title: "Booking Ops",
-    description: "Cari & kelola booking, konfirmasi pembayaran, swap/jadwalkan sesi.",
+    description: "Cari & kelola booking, lihat status pembayaran, swap/jadwalkan sesi.",
     items: [
       { label: "Booking list", hint: "GET /bookings?status=..." },
       { label: "Payment status", hint: "GET /bookings/:id (Midtrans read-only)" },
@@ -43,11 +46,20 @@ export default function Home() {
       <div className={styles.toolbar}>
         <div className={styles.titleGroup}>
           <h1>Fisioku Admin</h1>
-          <p>Set API & token untuk mulai mengelola booking, pembayaran, dan wallet.</p>
+          <p>Set API & token untuk mulai mengelola booking, pembayaran (Midtrans), dan wallet.</p>
         </div>
       </div>
 
       <SettingsBar />
+
+       <div className={styles.ctaRow}>
+        <Link href="/bookings" className={styles.button}>
+          Buka Booking list
+        </Link>
+        <Link href="/payment" className={`${styles.button} ${styles.secondary}`}>
+          Cek Payment status
+        </Link>
+      </div>
 
       <section className={styles.grid}>
         {cards.map((card) => (
