@@ -256,6 +256,9 @@ export class BookingService {
     if (filter.status) {
       qb.andWhere('b.status = :status', { status: filter.status });
     }
+    if (filter.paymentStatus) {
+      qb.andWhere('b.payment_status = :pstatus', { pstatus: filter.paymentStatus });
+    }
     if (filter.from) {
       qb.andWhere('b.created_at >= :from', { from: filter.from });
     }

@@ -11,6 +11,7 @@ import { User } from '../domain/entities/user.entity';
 import { Wallet } from '../domain/entities/wallet.entity';
 import { WalletTransaction } from '../domain/entities/wallet-transaction.entity';
 import { AdminActionLog } from '../domain/entities/admin-action-log.entity';
+import { MidtransWebhookLog } from '../domain/entities/midtrans-webhook-log.entity';
 import { BookingModule } from './booking/booking.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
@@ -45,6 +46,7 @@ import { AppService } from '../services/app.service';
         WalletTransaction,
         Review,
         AdminActionLog,
+        MidtransWebhookLog,
       ],
       synchronize: false,
       autoLoadEntities: true,

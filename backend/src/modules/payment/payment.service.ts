@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, GoneException, Logger } from '@nestjs/
 import { DataSource } from 'typeorm';
 import { Booking, PaymentStatus } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
+import { MidtransWebhookLog } from '../../domain/entities/midtrans-webhook-log.entity';
 import { NotificationService } from '../notification/notification.service';
 import { BookingService } from '../booking/booking.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
@@ -134,6 +135,7 @@ export class PaymentService {
 
     const bookingRepo = this.dataSource.getRepository(Booking);
     const sessionRepo = this.dataSource.getRepository(Session);
+    const logRepo = this.dataSource.getRepository(MidtransWebhookLog);
     const orderId = body.order_id;
 
     let booking =
@@ -153,6 +155,13 @@ export class PaymentService {
     }
 
     if (!booking) {
+      await this.saveWebhookLog(logRepo, {
+        orderId,
+        bookingId: null,
+        paymentStatus: 'FAILED',
+        transactionStatus: body.transaction_status,
+        rawPayload: body as Record<string, unknown>,
+      });
       this.logger.warn(`Webhook Midtrans: booking not found for order_id=${orderId}`);
       throw new BadRequestException('Booking untuk order_id ini tidak ditemukan');
     }
@@ -176,6 +185,13 @@ export class PaymentService {
       this.logger.log(
         `Webhook Midtrans PENDING order_id=${orderId} booking_id=${booking.id} status=${body.transaction_status}`,
       );
+      await this.saveWebhookLog(logRepo, {
+        orderId,
+        bookingId: booking.id,
+        paymentStatus: 'PENDING',
+        transactionStatus: body.transaction_status,
+        rawPayload: body as Record<string, unknown>,
+      });
       return { ok: true, status: 'PENDING' };
     }
 
@@ -218,6 +234,13 @@ export class PaymentService {
       this.logger.log(
         `Webhook Midtrans PAID order_id=${orderId} booking_id=${booking.id} status=${body.transaction_status}`,
       );
+      await this.saveWebhookLog(logRepo, {
+        orderId,
+        bookingId: booking.id,
+        paymentStatus: 'PAID',
+        transactionStatus: body.transaction_status,
+        rawPayload: body as Record<string, unknown>,
+      });
       return { ok: true, status: 'PAID' };
     }
 
@@ -232,6 +255,13 @@ export class PaymentService {
     this.logger.warn(
       `Webhook Midtrans terminal order_id=${orderId} booking_id=${booking.id} paymentStatus=${nextPaymentStatus} tx=${body.transaction_status}`,
     );
+    await this.saveWebhookLog(logRepo, {
+      orderId,
+      bookingId: booking.id,
+      paymentStatus: nextPaymentStatus,
+      transactionStatus: body.transaction_status,
+      rawPayload: body as Record<string, unknown>,
+    });
     return { ok: true, status: nextPaymentStatus };
   }
 
@@ -383,5 +413,20 @@ export class PaymentService {
     return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
       value,
     );
+  }
+
+  private async saveWebhookLog(
+    repo: ReturnType<DataSource['getRepository']<MidtransWebhookLog>>,
+    log: Pick<
+      MidtransWebhookLog,
+      'orderId' | 'bookingId' | 'paymentStatus' | 'transactionStatus' | 'rawPayload'
+    >,
+  ) {
+    try {
+      const entity = repo.create(log);
+      await repo.save(entity);
+    } catch (err) {
+      this.logger.warn(`Failed to save Midtrans webhook log for order_id=${log.orderId}`, err as Error);
+    }
   }
 }

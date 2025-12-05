@@ -57,6 +57,15 @@ function formatInstruction(instr: any): string {
   return JSON.stringify(instr);
 }
 
+function formatCountdown(expiry?: string | null) {
+  if (!expiry) return '';
+  const diffMs = new Date(expiry).getTime() - Date.now();
+  if (diffMs <= 0) return '(expired)';
+  const mins = Math.floor(diffMs / 60000);
+  const secs = Math.floor((diffMs % 60000) / 1000);
+  return `(expires in ${mins}m ${secs}s)`;
+}
+
 export default function PaymentStatusPage() {
   const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
   const [bookingId, setBookingId] = useState('');
@@ -192,7 +201,7 @@ export default function PaymentStatusPage() {
               <div className={styles.value}>
                 {formatDate(detail.paymentExpiryTime)}
                 {detail.paymentExpiryTime && (
-                  <span className={styles.muted}> {new Date(detail.paymentExpiryTime) < new Date() ? '(expired)' : ''}</span>
+                  <span className={styles.muted}> {formatCountdown(detail.paymentExpiryTime)}</span>
                 )}
               </div>
             </div>
