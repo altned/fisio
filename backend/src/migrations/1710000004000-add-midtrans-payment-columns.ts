@@ -16,10 +16,10 @@ export class AddMidtransPaymentColumns1710000004000 implements MigrationInterfac
       ADD COLUMN payment_payload jsonb
     `);
 
-    await queryRunner.query(`UPDATE bookings SET payment_status = 'PAID' WHERE status = 'PAID'`);
-    await queryRunner.query(
-      `UPDATE bookings SET payment_status = 'CANCELLED' WHERE status = 'CANCELLED'`,
-    );
+    // Note: UPDATE queries removed - for fresh installs, bookings table is empty.
+    // For existing data migration, run manually after all migrations complete:
+    // UPDATE bookings SET payment_status = 'PAID' WHERE status = 'PAID';
+    // UPDATE bookings SET payment_status = 'CANCELLED' WHERE status = 'CANCELLED';
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

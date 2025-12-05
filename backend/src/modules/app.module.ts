@@ -22,6 +22,7 @@ import { ChatModule } from './chat/chat.module';
 import { JobModule } from './job/job.module';
 import { TherapistModule } from './therapist/therapist.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { AuthModule } from './auth/auth.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -61,6 +62,7 @@ import { AppService } from '../services/app.service';
     JobModule,
     TherapistModule,
     WebhookModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -71,4 +73,4 @@ import { AppService } from '../services/app.service';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

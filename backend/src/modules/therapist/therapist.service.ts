@@ -4,7 +4,7 @@ import { Therapist } from '../../domain/entities/therapist.entity';
 
 @Injectable()
 export class TherapistService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   async list(): Promise<Therapist[]> {
     return this.dataSource.getRepository(Therapist).find({

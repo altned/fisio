@@ -1,82 +1,189 @@
 'use client';
 
-'use client';
+import { useEffect, useState, useCallback } from 'react';
+import { useSettingsStore } from '../store/settings';
+import { apiFetch } from '../lib/api';
+import { useRequireAuth } from '../lib/useRequireAuth';
+import { SettingsBar } from '../components/SettingsBar';
+import Link from 'next/link';
 
-import Link from "next/link";
-import { SettingsBar } from "../components/SettingsBar";
-import styles from "./page.module.css";
-import { useRequireAuth } from "../lib/useRequireAuth";
+type BookingStats = {
+  pending: number;
+  paid: number;
+  completed: number;
+  cancelled: number;
+};
 
-const cards = [
-  {
-    title: "Booking Ops",
-    description: "Cari & kelola booking, lihat status pembayaran, swap/jadwalkan sesi.",
-    items: [
-      { label: "Booking list", hint: "GET /bookings?status=..." },
-      { label: "Payment status", hint: "GET /bookings/:id (Midtrans read-only)" },
-      { label: "Swap therapist", hint: "PATCH /admin/bookings/:id/swap-therapist" },
-    ],
-  },
-  {
-    title: "Wallet & Revenue",
-    description: "Topup/withdraw manual, manual payout per sesi, transaksi & stats.",
-    items: [
-      { label: "Topup/Withdraw", hint: "POST /admin/wallets/:id/topup|withdraw" },
-      { label: "Manual payout", hint: "POST /admin/sessions/:id/payout" },
-      { label: "Monthly stats", hint: "GET /wallets/:id/stats/monthly" },
-    ],
-  },
-  {
-    title: "Audit & Ops",
-    description: "Jejak aksi admin, webhook HMAC, dan trigger job ops.",
-    items: [
-      { label: "Admin logs", hint: "GET /admin/logs" },
-      { label: "Webhook test", hint: "POST /webhooks/test (HMAC)" },
-      { label: "Jobs", hint: "/bookings/timeout|expire|chat-lock/run" },
-    ],
-  },
-];
+type DashboardData = {
+  bookings: BookingStats;
+  recentBookings: Array<{
+    id: string;
+    status: string;
+    paymentStatus: string;
+    createdAt: string;
+    user?: { fullName?: string };
+    therapist?: { fullName?: string };
+  }>;
+};
 
-export default function Home() {
+export default function DashboardPage() {
+  const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<BookingStats>({ pending: 0, paid: 0, completed: 0, cancelled: 0 });
+  const [recentBookings, setRecentBookings] = useState<DashboardData['recentBookings']>([]);
   const { ready } = useRequireAuth();
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  const loadDashboard = useCallback(async () => {
+    if (!apiBaseUrl || !adminToken) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Load recent bookings
+      const res = await apiFetch<{ data: DashboardData['recentBookings']; total: number }>(
+        apiBaseUrl,
+        '/bookings?limit=5',
+        { tokenOverride: adminToken }
+      );
+      setRecentBookings(res.data || []);
+
+      // Calculate stats from bookings (simplified)
+      const allBookings = await apiFetch<{ data: Array<{ status: string; paymentStatus: string }> }>(
+        apiBaseUrl,
+        '/bookings?limit=100',
+        { tokenOverride: adminToken }
+      );
+
+      const newStats: BookingStats = { pending: 0, paid: 0, completed: 0, cancelled: 0 };
+      (allBookings.data || []).forEach((b) => {
+        if (b.status === 'PENDING') newStats.pending++;
+        else if (b.status === 'PAID') newStats.paid++;
+        else if (b.status === 'COMPLETED') newStats.completed++;
+        else if (b.status === 'CANCELLED') newStats.cancelled++;
+      });
+      setStats(newStats);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiBaseUrl, adminToken]);
+
+  useEffect(() => {
+    if (apiBaseUrl && adminToken) {
+      loadDashboard();
+    }
+  }, [apiBaseUrl, adminToken, loadDashboard]);
+
   if (!ready) return null;
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.toolbar}>
-        <div className={styles.titleGroup}>
-          <h1>Fisioku Admin</h1>
-          <p>Set API & token untuk mulai mengelola booking, pembayaran (Midtrans), dan wallet.</p>
-        </div>
-      </div>
+    <>
+      <header className="page-header">
+        <h1>Dashboard</h1>
+        <p>Overview operasional Fisioku Prime Care</p>
+      </header>
 
       <SettingsBar />
 
-       <div className={styles.ctaRow}>
-        <Link href="/bookings" className={styles.button}>
-          Buka Booking list
-        </Link>
-        <Link href="/payment" className={`${styles.button} ${styles.secondary}`}>
-          Cek Payment status
-        </Link>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {/* Stats Grid */}
+      <div className="card-grid mb-lg">
+        <div className="stat-card">
+          <div className="stat-label">Pending Bookings</div>
+          <div className="stat-value">{stats.pending}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Paid (Waiting Accept)</div>
+          <div className="stat-value">{stats.paid}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Completed</div>
+          <div className="stat-value">{stats.completed}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Cancelled</div>
+          <div className="stat-value">{stats.cancelled}</div>
+        </div>
       </div>
 
-      <section className={styles.grid}>
-        {cards.map((card) => (
-          <article key={card.title} className={styles.card}>
-            <h2>{card.title}</h2>
-            <p>{card.description}</p>
-            <ul>
-              {card.items.map((item) => (
-                <li key={item.label}>
-                  <span>{item.label}</span>
-                  <code>{item.hint}</code>
-                </li>
-              ))}
-            </ul>
-          </article>
-        ))}
-      </section>
-    </main>
+      {/* Quick Actions */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Quick Actions</h3>
+        </div>
+        <div className="flex gap-md">
+          <Link href="/bookings" className="btn btn-primary">
+            📋 View All Bookings
+          </Link>
+          <Link href="/wallets" className="btn btn-secondary">
+            💰 Manage Wallets
+          </Link>
+          <Link href="/ops" className="btn btn-secondary">
+            ⚙️ Run Jobs
+          </Link>
+          <button className="btn btn-ghost" onClick={loadDashboard} disabled={loading}>
+            {loading ? 'Loading...' : '🔄 Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Bookings */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Recent Bookings</h3>
+          <Link href="/bookings" className="btn btn-ghost btn-sm">
+            View All →
+          </Link>
+        </div>
+
+        {recentBookings.length === 0 ? (
+          <div className="empty-state">
+            <p>No bookings found. Configure API settings above.</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="table table-clickable">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Payment</th>
+                  <th>Patient</th>
+                  <th>Therapist</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentBookings.map((b) => (
+                  <tr key={b.id} onClick={() => window.location.href = `/bookings?id=${b.id}`}>
+                    <td>
+                      <span className={`badge ${b.status === 'PENDING' ? 'warning' : b.status === 'CANCELLED' ? 'danger' : ''}`}>
+                        {b.status}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${b.paymentStatus === 'PENDING' ? 'warning' : b.paymentStatus === 'PAID' ? '' : 'danger'}`}>
+                        {b.paymentStatus}
+                      </span>
+                    </td>
+                    <td>{b.user?.fullName || '-'}</td>
+                    <td>{b.therapist?.fullName || '-'}</td>
+                    <td className="text-muted text-sm">
+                      {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
