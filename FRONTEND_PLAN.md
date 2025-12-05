@@ -30,8 +30,8 @@
 ### Checklist (tandai saat selesai)
 - [x] Setup env (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_ADMIN_TOKEN`), fetcher wrapper.
 - [x] Layout + auth shell (input base URL/token, simpan di localStorage).
-- [x] Booking list + filter/pagination + aksi (lihat status bayar, swap, detail).
-- [x] Booking detail/status pembayaran (read-only Midtrans).
+- [x] Booking list + filter/pagination + aksi (lihat status bayar, swap, detail, filter payment_status).
+- [x] Booking detail/status pembayaran (read-only Midtrans, auto-refresh PENDING, instruksi channel + countdown).
 - [ ] Payment status Midtrans (opsi override mark paid jika darurat).
 - [ ] Wallet detail + topup/withdraw + transaksi list.
 - [ ] Admin action logs list + filter.
@@ -47,12 +47,12 @@
 1. **Auth Shell**
    - Layout dengan field base URL + token (disimpan di localStorage) + proteksi route sederhana.
 2. **Booking List**
-   - Tabel dengan filter: status, therapistId, userId, date range; pagination.
-   - Aksi row: lihat status pembayaran Midtrans (token/channel/expiry), swap therapist (modal pilih therapistId), buka detail.
+   - Tabel dengan filter: status, payment_status, therapistId, userId, date range; pagination.
+   - Aksi row: lihat status pembayaran Midtrans (token/channel/expiry + countdown), swap therapist (modal pilih therapistId), buka detail.
 3. **Booking Detail**
    - Data booking + sessions; aksi: schedule pending session (ADMIN), run accept/decline? (opsional), trigger manual payout (ADMIN) per session.
 4. **Payment Ops**
-   - Panel detail pembayaran Midtrans: status terbaru, channel instruksi, expiry, link/token Snap/Core (jika diperlukan), tombol refresh status; opsi override mark paid (ADMIN) hanya untuk incident.
+   - Panel detail pembayaran Midtrans: status terbaru, channel instruksi, expiry + countdown, link/token Snap/Core (jika diperlukan), auto-refresh saat PENDING; opsi override mark paid (ADMIN) hanya untuk incident.
 5. **Wallet Ops**
    - Wallet detail (balance, monthly stats), transaksi list.
    - Aksi: topup (amount, adminNote), withdraw (amount, adminNote).

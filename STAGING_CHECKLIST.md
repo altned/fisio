@@ -4,6 +4,7 @@
   - [ ] Buat booking regular/instant, init payment (Midtrans Core), settle via sandbox, webhook menandai `PAID`, SLA respond terapis, sesi selesai.
   - [ ] Payout pro-rata masuk wallet (session_fee).
   - [ ] Cek status `pending/settlement/expire/cancel/deny` dari Midtrans termapping benar (expire/cancel → booking CANCELLED + refund_status PENDING).
+  - [ ] Log webhook tercatat di `midtrans_webhook_logs` sesuai order_id/booking_id/status.
 - [ ] Forfeit flow
   - [ ] Cancel <1h atau no-show → status FORFEITED, payout kompensasi masuk wallet (forfeit_compensation).
 - [ ] Expiry flow

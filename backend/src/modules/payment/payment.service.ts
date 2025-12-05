@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, GoneException, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Booking, PaymentStatus } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { MidtransWebhookLog } from '../../domain/entities/midtrans-webhook-log.entity';
@@ -416,7 +416,7 @@ export class PaymentService {
   }
 
   private async saveWebhookLog(
-    repo: ReturnType<DataSource['getRepository']<MidtransWebhookLog>>,
+    repo: Repository<MidtransWebhookLog>,
     log: Pick<
       MidtransWebhookLog,
       'orderId' | 'bookingId' | 'paymentStatus' | 'transactionStatus' | 'rawPayload'

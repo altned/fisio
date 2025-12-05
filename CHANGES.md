@@ -9,6 +9,8 @@
   - `POST /payment/initiate` → create charge Midtrans (VA/QR/e-wallet), simpan token/instruksi/expiry.
   - `POST /webhooks/midtrans` → verifikasi signature_key, set booking payment_status (settlement/capture → PAID; expire/cancel/deny/refund → CANCELLED/EXPIRED) idempoten; upload bukti/confirm manual dinonaktifkan (410).
 - Booking acceptance/timeout tetap berjalan setelah status `PAID` dari webhook.
+- Audit: log webhook Midtrans disimpan di tabel `midtrans_webhook_logs`.
+- Admin UI: Booking & Payment page menampilkan status pembayaran, instruksi channel, filter payment_status, dan auto-refresh saat PENDING.
 
 ## 2024-03-XX
 - Ubah flow pembayaran ke transfer bank & QRIS statis (hilangkan Midtrans).

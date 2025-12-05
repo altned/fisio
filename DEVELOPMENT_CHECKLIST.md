@@ -29,7 +29,7 @@
   - [x] Tambah kolom booking untuk Midtrans (payment_provider/status/order_id/token/expiry/payload).
   - [x] Integrasi `POST /payment/initiate` ke Midtrans Core (VA/QRIS/e-wallet), simpan instruksi/expiry.
   - [x] Webhook Midtrans + verifikasi signature → set booking PAID/EXPIRED/CANCELLED idempoten; hilangkan upload bukti/confirm manual.
-  - [ ] Update klien (mobile/web) untuk render instruksi Midtrans + polling/status webhook.
+  - [ ] Update klien (mobile/web) untuk render instruksi Midtrans + polling/status webhook (admin read-only status sudah ada).
 
 - [x] **Phase 4 — Session Lifecycle**
   - [x] Transisi status: SCHEDULED → COMPLETED; cancel window >1h; forfeit (<1h/no-show) → FORFEITED.
