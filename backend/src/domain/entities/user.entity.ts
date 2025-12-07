@@ -22,6 +22,9 @@ export class User {
   @Column({ type: 'varchar', length: 20, default: 'PATIENT' })
   role!: UserRole;
 
+  @Column({ name: 'password_hash', type: 'varchar', length: 160, nullable: true })
+  passwordHash!: string | null;
+
   @Column({ name: 'is_profile_complete', type: 'boolean', default: false })
   isProfileComplete!: boolean;
 

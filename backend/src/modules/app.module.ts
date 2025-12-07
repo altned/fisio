@@ -21,6 +21,7 @@ import { NotificationModule } from './notification/notification.module';
 import { ChatModule } from './chat/chat.module';
 import { JobModule } from './job/job.module';
 import { TherapistModule } from './therapist/therapist.module';
+import { PackageModule } from './package/package.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from '../presentation/app.controller';
@@ -61,6 +62,7 @@ import { AppService } from '../services/app.service';
     ChatModule,
     JobModule,
     TherapistModule,
+    PackageModule,
     WebhookModule,
     AuthModule,
   ],

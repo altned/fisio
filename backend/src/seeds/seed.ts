@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { DataSource, EntityManager } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { AppDataSource } from '../config/data-source';
 import { Booking } from '../domain/entities/booking.entity';
 import { Package } from '../domain/entities/package.entity';
@@ -7,23 +8,31 @@ import { Therapist } from '../domain/entities/therapist.entity';
 import { User } from '../domain/entities/user.entity';
 import { Wallet } from '../domain/entities/wallet.entity';
 
+const SALT_ROUNDS = 10;
+const DEFAULT_PASSWORD = 'password123';
+
 type SeedUser = {
   email: string;
   fullName: string;
   role: 'PATIENT' | 'THERAPIST' | 'ADMIN';
   isProfileComplete?: boolean;
+  password?: string;
 };
 
 const seedUsers: SeedUser[] = [
-  { email: 'admin@example.com', fullName: 'Admin Fisio', role: 'ADMIN', isProfileComplete: true },
-  { email: 'patient@example.com', fullName: 'Patient Demo', role: 'PATIENT', isProfileComplete: true },
-  { email: 'therapist@example.com', fullName: 'Therapist Demo', role: 'THERAPIST', isProfileComplete: true },
+  { email: 'admin@example.com', fullName: 'Admin Fisio', role: 'ADMIN', isProfileComplete: true, password: 'admin123' },
+  { email: 'patient@example.com', fullName: 'Patient Demo', role: 'PATIENT', isProfileComplete: true, password: 'patient123' },
+  { email: 'therapist@example.com', fullName: 'Therapist Demo', role: 'THERAPIST', isProfileComplete: true, password: 'therapist123' },
 ];
 
 const seedPackages: Array<Pick<Package, 'name' | 'sessionCount' | 'totalPrice'>> = [
   { name: 'Single Session', sessionCount: 1, totalPrice: '250000' },
   { name: '4-Session Package', sessionCount: 4, totalPrice: '900000' },
 ];
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
 
 async function ensureUsers(manager: EntityManager): Promise<Record<string, User>> {
   const userRepo = manager.getRepository(User);
@@ -34,15 +43,27 @@ async function ensureUsers(manager: EntityManager): Promise<Record<string, User>
 
   const created: User[] = [];
   for (const seed of seedUsers) {
-    if (existingByEmail.has(seed.email)) {
-      created.push(existingByEmail.get(seed.email)!);
+    const existingUser = existingByEmail.get(seed.email);
+
+    // Hash password
+    const passwordHash = await hashPassword(seed.password || DEFAULT_PASSWORD);
+
+    if (existingUser) {
+      // Update existing user with password hash if not set
+      if (!existingUser.passwordHash) {
+        existingUser.passwordHash = passwordHash;
+        await userRepo.save(existingUser);
+      }
+      created.push(existingUser);
       continue;
     }
+
     const user = userRepo.create({
       email: seed.email,
       fullName: seed.fullName,
       role: seed.role,
       isProfileComplete: seed.isProfileComplete ?? false,
+      passwordHash,
     });
     created.push(await userRepo.save(user));
   }
@@ -121,6 +142,10 @@ async function main() {
 
     // eslint-disable-next-line no-console
     console.log('Seed berhasil dijalankan.');
+    console.log('\nDefault credentials:');
+    console.log('  Admin:     admin@example.com / admin123');
+    console.log('  Patient:   patient@example.com / patient123');
+    console.log('  Therapist: therapist@example.com / therapist123');
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Seed gagal:', err);

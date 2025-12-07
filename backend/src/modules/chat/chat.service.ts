@@ -53,16 +53,25 @@ export class ChatService {
       console.warn('[Chat] FIREBASE_CREDENTIALS_PATH not set, Firestore disabled');
       return null;
     }
+
+    const fullPath = path.resolve(credPath);
+
+    // Check if file exists before attempting to read
+    if (!fs.existsSync(fullPath)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[Chat] Firebase credentials file not found at ${fullPath}, Firestore disabled`);
+      return null;
+    }
+
     try {
-      const fullPath = path.resolve(credPath);
       const raw = fs.readFileSync(fullPath, 'utf8');
       const serviceAccount = JSON.parse(raw);
       const app =
         admin.apps.length > 0
           ? admin.app()
           : admin.initializeApp({
-              credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-            });
+            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+          });
       return app.firestore();
     } catch (err) {
       // eslint-disable-next-line no-console

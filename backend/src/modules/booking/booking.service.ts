@@ -23,7 +23,7 @@ export class BookingService {
     private readonly slotService: SlotService,
     private readonly notificationService: NotificationService,
     private readonly chatService: ChatService,
-  ) {}
+  ) { }
 
   async createBooking(input: CreateBookingDto): Promise<Booking> {
     this.validateSlot(input);
@@ -238,32 +238,34 @@ export class BookingService {
     const repo = this.dataSource.getRepository(Booking);
     const page = Math.max(filter.page ?? 1, 1);
     const limit = Math.min(Math.max(filter.limit ?? 20, 1), 100);
+
     const qb = repo
       .createQueryBuilder('b')
       .leftJoinAndSelect('b.user', 'user')
       .leftJoinAndSelect('b.therapist', 'therapist')
+      .leftJoinAndSelect('therapist.user', 'therapistUser')
       .leftJoinAndSelect('b.package', 'package')
-      .orderBy('b.created_at', 'DESC')
+      .orderBy('b.createdAt', 'DESC')
       .take(limit)
       .skip((page - 1) * limit);
 
     if (filter.therapistId) {
-      qb.andWhere('b.therapist_id = :tid', { tid: filter.therapistId });
+      qb.andWhere('b.therapist = :tid', { tid: filter.therapistId });
     }
     if (filter.userId) {
-      qb.andWhere('b.user_id = :uid', { uid: filter.userId });
+      qb.andWhere('b.user = :uid', { uid: filter.userId });
     }
     if (filter.status) {
       qb.andWhere('b.status = :status', { status: filter.status });
     }
     if (filter.paymentStatus) {
-      qb.andWhere('b.payment_status = :pstatus', { pstatus: filter.paymentStatus });
+      qb.andWhere('b.paymentStatus = :pstatus', { pstatus: filter.paymentStatus });
     }
     if (filter.from) {
-      qb.andWhere('b.created_at >= :from', { from: filter.from });
+      qb.andWhere('b.createdAt >= :from', { from: filter.from });
     }
     if (filter.to) {
-      qb.andWhere('b.created_at <= :to', { to: filter.to });
+      qb.andWhere('b.createdAt <= :to', { to: filter.to });
     }
 
     const [data, total] = await qb.getManyAndCount();
