@@ -110,6 +110,26 @@ export class Booking {
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 
+  // Consent fields - per booking
+  @Column({ name: 'consent_service', type: 'boolean', default: false })
+  consentService!: boolean;
+
+  @Column({ name: 'consent_data_sharing', type: 'boolean', default: false })
+  consentDataSharing!: boolean;
+
+  @Column({ name: 'consent_terms', type: 'boolean', default: false })
+  consentTerms!: boolean;
+
+  @Column({ name: 'consent_medical_disclaimer', type: 'boolean', default: false })
+  consentMedicalDisclaimer!: boolean;
+
+  @Column({ name: 'consent_version', type: 'varchar', length: 20, nullable: true })
+  consentVersion!: string | null;
+
+  @Column({ name: 'consented_at', type: 'timestamp with time zone', nullable: true })
+  consentedAt!: Date | null;
+
   @OneToMany(() => Session, (session) => session.booking)
   sessions!: Session[];
 }
+

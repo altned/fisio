@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, Param, Request } from '@nestjs/common';
 import { Booking } from '../../domain/entities/booking.entity';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -17,7 +17,7 @@ export class BookingController {
     private readonly timeoutService: TimeoutService,
     private readonly chatLockService: ChatLockService,
     private readonly sessionService: SessionService,
-  ) {}
+  ) { }
 
   @Get()
   @UseGuards(JwtGuard, RolesGuard)
@@ -38,16 +38,27 @@ export class BookingController {
     return this.bookingService.search(parsed);
   }
 
+  @Get('my')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('PATIENT', 'THERAPIST')
+  getMyBookings(@Request() req: any) {
+    const user = req.user;
+    return this.bookingService.getMyBookings(user.id, user.role);
+  }
+
   @Post()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT')
   @Throttle(5, 60)
-  create(@Body() body: CreateBookingDto): Promise<Booking> {
+  create(@Body() body: any, @Request() req: any): Promise<Booking> {
     return this.bookingService.createBooking({
       ...body,
+      userId: req.user.id, // Get user from JWT token
+      lockedAddress: body.address || body.lockedAddress, // Support both field names
       scheduledAt: new Date(body.scheduledAt),
     });
   }
+
 
   @Post('accept')
   @UseGuards(JwtGuard, RolesGuard)
@@ -88,8 +99,10 @@ export class BookingController {
 
   @Get(':id')
   @UseGuards(JwtGuard, RolesGuard)
-  @Roles('ADMIN')
-  detail(@Param('id') id: string) {
-    return this.bookingService.getDetail(id);
+  @Roles('ADMIN', 'PATIENT', 'THERAPIST')
+  detail(@Param('id') id: string, @Request() req: any) {
+    const user = req.user;
+    return this.bookingService.getDetail(id, user.id, user.role);
   }
 }
+

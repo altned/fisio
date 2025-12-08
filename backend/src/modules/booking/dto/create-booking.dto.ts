@@ -10,4 +10,9 @@ export interface CreateBookingDto {
   totalPrice: string;
   adminFeeAmount: string;
   therapistNetTotal: string;
+  // Consent fields - all required and must be true
+  consentService: boolean;
+  consentDataSharing: boolean;
+  consentTerms: boolean;
+  consentMedicalDisclaimer: boolean;
 }

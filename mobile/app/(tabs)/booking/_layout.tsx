@@ -27,6 +27,33 @@ export default function BookingLayout() {
                     title: 'Pilih Paket',
                 }}
             />
+            <Stack.Screen
+                name="step3-schedule"
+                options={{
+                    title: 'Jadwal & Alamat',
+                }}
+            />
+            <Stack.Screen
+                name="step3b-consent"
+                options={{
+                    title: 'Persetujuan',
+                }}
+            />
+            <Stack.Screen
+                name="step4-payment"
+                options={{
+                    title: 'Pembayaran',
+                    headerBackVisible: false, // Prevent going back during payment
+                }}
+            />
+
+            <Stack.Screen
+                name="step5-success"
+                options={{
+                    title: 'Sukses',
+                    headerShown: false, // Full screen success
+                }}
+            />
         </Stack>
     );
 }

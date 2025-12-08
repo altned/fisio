@@ -1,11 +1,33 @@
-import { Body, Controller, Param, Post, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards, Req } from '@nestjs/common';
 import { SessionService } from './session.service';
 import { Roles, RolesGuard, JwtGuard } from '../../common/auth';
 import { Throttle } from '@nestjs/throttler';
 
 @Controller('sessions')
 export class SessionController {
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(private readonly sessionService: SessionService) { }
+
+  /**
+   * Get busy slots for a therapist within date range
+   * Public endpoint for booking flow (requires auth but any role)
+   */
+  @Get('busy-slots/:therapistId')
+  @UseGuards(JwtGuard)
+  getBusySlots(
+    @Param('therapistId') therapistId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { busySlots: [] };
+    }
+
+    return this.sessionService.getBusySlots(therapistId, start, end);
+  }
 
   @Post(':id/complete')
   @UseGuards(JwtGuard, RolesGuard)

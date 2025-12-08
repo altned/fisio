@@ -65,7 +65,15 @@ export interface Booking {
     chatLockedAt?: string | null;
     createdAt: string;
     sessions?: Session[];
+    // Consent fields
+    consentService?: boolean;
+    consentDataSharing?: boolean;
+    consentTerms?: boolean;
+    consentMedicalDisclaimer?: boolean;
+    consentVersion?: string | null;
+    consentedAt?: string | null;
 }
+
 
 // Session
 export type SessionStatus =
@@ -146,3 +154,18 @@ export interface PaginatedResponse<T> {
     limit: number;
     total: number;
 }
+
+// Create Booking Payload
+export interface CreateBookingPayload {
+    therapistId: string;
+    packageId: string;
+    address: string;
+    scheduledAt: string; // ISO date string
+    bookingType: BookingType;
+    // Consent fields - all required
+    consentService: boolean;
+    consentDataSharing: boolean;
+    consentTerms: boolean;
+    consentMedicalDisclaimer: boolean;
+}
+

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Booking, BookingType } from '../../domain/entities/booking.entity';
 import { Package } from '../../domain/entities/package.entity';
@@ -27,6 +27,7 @@ export class BookingService {
 
   async createBooking(input: CreateBookingDto): Promise<Booking> {
     this.validateSlot(input);
+    this.validateConsent(input);
 
     return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const userRepo = manager.getRepository(User);
@@ -55,20 +56,36 @@ export class BookingService {
       await this.assertSlotAvailability(sessionRepo, therapist.id, input.scheduledAt);
 
       const sessionCount = pkg?.sessionCount ?? 1;
+
+      // Calculate pricing from package if not provided
+      const totalPrice = input.totalPrice || pkg?.totalPrice || '0';
+      const adminFeeRate = 0.1; // 10% admin fee
+      const adminFeeAmount = input.adminFeeAmount || (parseFloat(totalPrice) * adminFeeRate).toFixed(2);
+      const therapistNetTotal = input.therapistNetTotal || (parseFloat(totalPrice) - parseFloat(adminFeeAmount)).toFixed(2);
+
       const booking = bookingRepo.create({
         user,
         therapist,
         package: pkg ?? undefined,
         lockedAddress: input.lockedAddress,
-        totalPrice: input.totalPrice,
-        adminFeeAmount: input.adminFeeAmount,
-        therapistNetTotal: input.therapistNetTotal,
+        totalPrice: totalPrice,
+        adminFeeAmount: adminFeeAmount,
+        therapistNetTotal: therapistNetTotal,
         bookingType: input.bookingType,
         status: 'PENDING',
         chatLockedAt: null,
+        // Consent fields
+        consentService: input.consentService,
+        consentDataSharing: input.consentDataSharing,
+        consentTerms: input.consentTerms,
+        consentMedicalDisclaimer: input.consentMedicalDisclaimer,
+        consentVersion: '1.0',
+        consentedAt: new Date(),
       });
 
       const savedBooking = await bookingRepo.save(booking);
+
+
 
       if (input.bookingType === 'INSTANT') {
         await this.notificationService.notifyTherapistInstantBooking({
@@ -112,20 +129,38 @@ export class BookingService {
     }
   }
 
+  private validateConsent(input: CreateBookingDto) {
+    if (!input.consentService) {
+      throw new BadRequestException('Persetujuan layanan wajib diberikan');
+    }
+    if (!input.consentDataSharing) {
+      throw new BadRequestException('Persetujuan berbagi data wajib diberikan');
+    }
+    if (!input.consentTerms) {
+      throw new BadRequestException('Persetujuan syarat & ketentuan wajib diberikan');
+    }
+    if (!input.consentMedicalDisclaimer) {
+      throw new BadRequestException('Persetujuan disclaimer medis wajib diberikan');
+    }
+  }
+
+
   private async assertSlotAvailability(sessionRepo: Repository<Session>, therapistId: string, scheduledAt: Date) {
     const { start, end } = this.slotService.slotWindow(scheduledAt);
+    // Use getMany() instead of getCount() because PostgreSQL doesn't allow FOR UPDATE with aggregate functions
     const overlapping = await sessionRepo
       .createQueryBuilder('session')
       .setLock('pessimistic_write')
       .where('session.therapist_id = :therapistId', { therapistId })
       .andWhere('session.status IN (:...statuses)', { statuses: SCHEDULABLE_STATUSES })
       .andWhere('session.scheduled_at BETWEEN :start AND :end', { start, end })
-      .getCount();
+      .getMany();
 
-    if (overlapping > 0) {
+    if (overlapping.length > 0) {
       throw new BadRequestException('Slot tidak tersedia (double booking)');
     }
   }
+
 
   private async ensureWallet(walletRepo: Repository<Wallet>, therapist: Therapist) {
     const existing = await walletRepo.findOne({
@@ -272,14 +307,54 @@ export class BookingService {
     return { data, page, limit, total };
   }
 
-  async getDetail(bookingId: string) {
+  async getMyBookings(userId: string, role: 'PATIENT' | 'THERAPIST') {
+    const repo = this.dataSource.getRepository(Booking);
+
+    const qb = repo
+      .createQueryBuilder('b')
+      .leftJoinAndSelect('b.user', 'user')
+      .leftJoinAndSelect('b.therapist', 'therapist')
+      .leftJoinAndSelect('therapist.user', 'therapistUser')
+      .leftJoinAndSelect('b.package', 'package')
+      .leftJoinAndSelect('b.sessions', 'session')
+      .orderBy('b.createdAt', 'DESC')
+      .addOrderBy('session.sequenceOrder', 'ASC');
+
+    if (role === 'PATIENT') {
+      qb.where('b.user = :userId', { userId });
+    } else {
+      // THERAPIST - find therapist record by user id
+      const therapistRepo = this.dataSource.getRepository(Therapist);
+      const therapist = await therapistRepo.findOne({ where: { user: { id: userId } } });
+      if (!therapist) {
+        return [];
+      }
+      qb.where('b.therapist = :therapistId', { therapistId: therapist.id });
+    }
+
+    return qb.getMany();
+  }
+
+  async getDetail(bookingId: string, requesterId?: string, requesterRole?: string) {
     const repo = this.dataSource.getRepository(Booking);
     const booking = await repo.findOne({
       where: { id: bookingId },
-      relations: ['user', 'therapist', 'package', 'sessions'],
+      relations: ['user', 'therapist', 'therapist.user', 'package', 'sessions'],
       order: { sessions: { sequenceOrder: 'ASC' } as any },
     });
     if (!booking) throw new BadRequestException('Booking tidak ditemukan');
+
+    // Ownership check for non-admin
+    if (requesterRole && requesterRole !== 'ADMIN' && requesterId) {
+      const isPatientOwner = requesterRole === 'PATIENT' && booking.user.id === requesterId;
+      const isTherapistOwner = requesterRole === 'THERAPIST' && booking.therapist.user?.id === requesterId;
+
+      if (!isPatientOwner && !isTherapistOwner) {
+        throw new ForbiddenException('Anda tidak memiliki akses ke booking ini');
+      }
+    }
+
     return booking;
   }
 }
+

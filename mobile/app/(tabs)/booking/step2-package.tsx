@@ -43,10 +43,18 @@ export default function PackageSelectionScreen() {
     }, []);
 
     const handleSelectPackage = (pkg: Package) => {
-        // Navigate to next step (Schedule)
-        // For now just console log
-        console.log('Selected:', pkg);
-        alert('Jadwal selection Coming Soon!');
+        // Navigate to schedule & address step
+        router.push({
+            pathname: '/(tabs)/booking/step3-schedule',
+            params: {
+                therapistId: params.therapistId,
+                therapistName: params.therapistName,
+                packageId: pkg.id,
+                packageName: pkg.name,
+                totalPrice: pkg.totalPrice,
+                sessionCount: pkg.sessionCount.toString(),
+            },
+        });
     };
 
     const formatPrice = (price: string) => {

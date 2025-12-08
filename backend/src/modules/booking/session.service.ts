@@ -19,7 +19,7 @@ export class SessionService {
     private readonly walletService: WalletService,
     private readonly slotService: SlotService,
     @InjectQueue('payout') private readonly payoutQueue: Queue,
-  ) {}
+  ) { }
 
   async completeSession(sessionId: string): Promise<Session> {
     return this.dataSource.transaction(async (manager) => {
@@ -186,4 +186,30 @@ export class SessionService {
       throw new BadRequestException('Slot tidak tersedia (double booking)');
     }
   }
+
+  /**
+   * Get busy time slots for a therapist within a date range
+   * Returns array of ISO date strings representing booked slot start times
+   */
+  async getBusySlots(
+    therapistId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<string[]> {
+    const sessionRepo = this.dataSource.getRepository(Session);
+
+    const sessions = await sessionRepo
+      .createQueryBuilder('session')
+      .select('session.scheduled_at', 'scheduledAt')
+      .where('session.therapist_id = :therapistId', { therapistId })
+      .andWhere('session.status IN (:...statuses)', { statuses: SCHEDULABLE_STATUSES })
+      .andWhere('session.scheduled_at >= :startDate', { startDate })
+      .andWhere('session.scheduled_at <= :endDate', { endDate })
+      .getRawMany<{ scheduledAt: Date }>();
+
+    return sessions
+      .filter(s => s.scheduledAt)
+      .map(s => s.scheduledAt.toISOString());
+  }
 }
+
