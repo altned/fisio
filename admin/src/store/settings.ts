@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 
 type SettingsState = {
-  apiBaseUrl: string;
   adminToken: string;
   loggedIn: boolean;
-  setApiBaseUrl: (url: string) => void;
   setAdminToken: (token: string) => void;
   setLoggedIn: (loggedIn: boolean) => void;
   logout: () => void;
@@ -13,14 +11,12 @@ type SettingsState = {
 
 const STORAGE_KEY = 'fisioku-admin-settings';
 
+// Use .env for API base URL - no manual input needed
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '',
-  adminToken: process.env.NEXT_PUBLIC_ADMIN_TOKEN || '',
+  adminToken: '',
   loggedIn: false,
-  setApiBaseUrl: (url: string) => {
-    set({ apiBaseUrl: url });
-    persist({ ...get(), apiBaseUrl: url });
-  },
   setAdminToken: (token: string) => {
     set({ adminToken: token });
     persist({ ...get(), adminToken: token });
@@ -30,8 +26,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     persist({ ...get(), loggedIn });
   },
   logout: () => {
-    set({ loggedIn: false, adminToken: '', apiBaseUrl: '' });
-    persist({ apiBaseUrl: '', adminToken: '', loggedIn: false });
+    set({ loggedIn: false, adminToken: '' });
+    persist({ adminToken: '', loggedIn: false });
   },
   hydrate: () => {
     const data = load();
@@ -39,7 +35,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 }));
 
-type Persisted = Pick<SettingsState, 'apiBaseUrl' | 'adminToken' | 'loggedIn'>;
+type Persisted = Pick<SettingsState, 'adminToken' | 'loggedIn'>;
 
 function persist(state: Persisted) {
   if (typeof window === 'undefined') return;
@@ -57,3 +53,4 @@ function load(): Persisted | null {
     return null;
   }
 }
+

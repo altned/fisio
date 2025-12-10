@@ -7,6 +7,8 @@ import { useSettingsStore } from '../store/settings';
 const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/bookings', label: 'Bookings', icon: '📋' },
+    { href: '/therapists', label: 'Therapists', icon: '👨‍⚕️' },
+    { href: '/packages', label: 'Packages', icon: '📦' },
     { href: '/wallets', label: 'Wallets', icon: '💰' },
     { href: '/logs', label: 'Admin Logs', icon: '📝' },
     { href: '/ops', label: 'Operations', icon: '⚙️' },

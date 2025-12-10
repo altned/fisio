@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSettingsStore } from '../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../store/settings';
 import { apiFetch } from '../lib/api';
 import { useRequireAuth } from '../lib/useRequireAuth';
-import { SettingsBar } from '../components/SettingsBar';
 import Link from 'next/link';
 
 type BookingStats = {
@@ -27,7 +26,7 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
-  const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+  const { adminToken, hydrate } = useSettingsStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<BookingStats>({ pending: 0, paid: 0, completed: 0, cancelled: 0 });
@@ -39,14 +38,14 @@ export default function DashboardPage() {
   }, [hydrate]);
 
   const loadDashboard = useCallback(async () => {
-    if (!apiBaseUrl || !adminToken) return;
+    if (!adminToken) return;
     setLoading(true);
     setError(null);
 
     try {
       // Load recent bookings
       const res = await apiFetch<{ data: DashboardData['recentBookings']; total: number }>(
-        apiBaseUrl,
+        API_BASE_URL,
         '/bookings?limit=5',
         { tokenOverride: adminToken }
       );
@@ -54,7 +53,7 @@ export default function DashboardPage() {
 
       // Calculate stats from bookings (simplified)
       const allBookings = await apiFetch<{ data: Array<{ status: string; paymentStatus: string }> }>(
-        apiBaseUrl,
+        API_BASE_URL,
         '/bookings?limit=100',
         { tokenOverride: adminToken }
       );
@@ -72,24 +71,24 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, adminToken]);
+  }, [adminToken]);
 
   useEffect(() => {
-    if (apiBaseUrl && adminToken) {
+    if (adminToken) {
       loadDashboard();
     }
-  }, [apiBaseUrl, adminToken, loadDashboard]);
+  }, [adminToken, loadDashboard]);
 
   if (!ready) return null;
 
   return (
     <>
       <header className="page-header">
-        <h1>Dashboard</h1>
-        <p>Overview operasional Fisioku Prime Care</p>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Overview operasional Fisioku Prime Care</p>
+        </div>
       </header>
-
-      <SettingsBar />
 
       {error && <div className="alert alert-error">{error}</div>}
 

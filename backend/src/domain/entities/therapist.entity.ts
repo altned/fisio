@@ -9,6 +9,14 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 
+export type TherapistBidang =
+  | 'Fisioterapi Muskuloskeletal'
+  | 'Fisioterapi Neuromuskular'
+  | 'Fisioterapi Kardiopulmoner'
+  | 'Fisioterapi Pediatrik'
+  | 'Fisioterapi Geriatrik'
+  | 'Fisioterapi Olahraga';
+
 @Entity({ name: 'therapists' })
 export class Therapist {
   @PrimaryGeneratedColumn('uuid')
@@ -17,6 +25,30 @@ export class Therapist {
   @OneToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user!: User;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  bidang!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  phone!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  address!: string | null;
+
+  @Column({ name: 'photo_url', type: 'varchar', length: 500, nullable: true })
+  photoUrl!: string | null;
+
+  @Column({ name: 'str_number', type: 'varchar', length: 50, nullable: true })
+  strNumber!: string | null;
+
+  @Column({ name: 'experience_years', type: 'integer', default: 0 })
+  experienceYears!: number;
+
+  @Column({ type: 'text', nullable: true })
+  bio!: string | null;
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive!: boolean;
 
   @Column({ name: 'average_rating', type: 'decimal', precision: 3, scale: 2, default: 0 })
   averageRating!: string;
@@ -30,3 +62,4 @@ export class Therapist {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
 }
+
