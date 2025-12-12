@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { Roles, RolesGuard, JwtGuard } from '../../common/auth';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
@@ -8,7 +8,7 @@ import { Throttle } from '@nestjs/throttler';
 
 @Controller('payment')
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(private readonly paymentService: PaymentService) { }
 
   @Post('initiate')
   @UseGuards(JwtGuard, RolesGuard)
@@ -32,5 +32,16 @@ export class PaymentController {
   @Throttle(5, 60)
   confirm(@Body() body: ConfirmPaymentDto) {
     return this.paymentService.confirmPayment(body);
+  }
+
+  /**
+   * ⚠️ DEV ONLY - Force a booking to PAID status
+   * !!! REMOVE OR DISABLE BEFORE PRODUCTION RELEASE !!!
+   * @see DEV_NOTES.md
+   */
+  @Post('force-paid/:bookingId')
+  @UseGuards(JwtGuard)
+  forcePaid(@Param('bookingId') bookingId: string) {
+    return this.paymentService.forcePaymentPaid(bookingId);
   }
 }

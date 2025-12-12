@@ -11,6 +11,7 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -202,7 +203,6 @@ export default function ScheduleScreen() {
                     </Text>
                 </Card>
 
-                {/* Address Input */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Alamat Lengkap</Text>
                     <Input
@@ -213,9 +213,26 @@ export default function ScheduleScreen() {
                         numberOfLines={3}
                         style={styles.addressInput}
                     />
-                    <Text style={[styles.hint, { color: colors.textMuted }]}>
-                        Alamat ini akan dikunci untuk semua sesi dalam paket
-                    </Text>
+                    <View style={styles.addressActions}>
+                        <Text style={[styles.hint, { color: colors.textMuted, flex: 1 }]}>
+                            Alamat ini akan dikunci untuk semua sesi dalam paket
+                        </Text>
+                        {address.trim().length > 10 && (
+                            <TouchableOpacity
+                                style={[styles.mapButton, { backgroundColor: colors.primaryLight }]}
+                                onPress={() => {
+                                    const encodedAddress = encodeURIComponent(address.trim());
+                                    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+                                    Linking.openURL(url).catch(() => {
+                                        Alert.alert('Error', 'Tidak dapat membuka Google Maps');
+                                    });
+                                }}
+                            >
+                                <Ionicons name="location" size={16} color={colors.primary} />
+                                <Text style={[styles.mapButtonText, { color: colors.primary }]}>Cek di Maps</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 {/* Date Selection */}
@@ -373,6 +390,24 @@ const styles = StyleSheet.create({
     hint: {
         fontSize: Typography.fontSize.xs,
         marginTop: Spacing.xs,
+    },
+    addressActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: Spacing.xs,
+        gap: Spacing.sm,
+    },
+    mapButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: BorderRadius.md,
+        gap: 4,
+    },
+    mapButtonText: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.medium,
     },
     dateScroll: {
         marginHorizontal: -Spacing.lg,

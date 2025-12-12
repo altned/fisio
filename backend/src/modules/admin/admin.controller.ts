@@ -11,7 +11,7 @@ import { Roles, RolesGuard, JwtGuard } from '../../common/auth';
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Post('bookings/refund')
   completeRefund(@Req() req: any, @Body() body: CompleteRefundDto) {
@@ -60,5 +60,10 @@ export class AdminController {
     const p = page ? Number(page) : 1;
     const l = limit ? Number(limit) : 20;
     return this.adminService.listAdminActions(p, l);
+  }
+
+  @Get('stats/revenue')
+  getRevenueStats() {
+    return this.adminService.getRevenueStats();
   }
 }

@@ -12,6 +12,7 @@ type Package = {
     name: string;
     sessionCount: number;
     totalPrice: string;
+    commissionRate: string;
     createdAt: string;
     updatedAt: string;
 };
@@ -20,12 +21,14 @@ type FormData = {
     name: string;
     sessionCount: string;
     totalPrice: string;
+    commissionRate: string;
 };
 
 const initialFormData: FormData = {
     name: '',
     sessionCount: '1',
     totalPrice: '',
+    commissionRate: '30',
 };
 
 export default function PackagesPage() {
@@ -80,6 +83,7 @@ export default function PackagesPage() {
             name: pkg.name,
             sessionCount: pkg.sessionCount.toString(),
             totalPrice: pkg.totalPrice,
+            commissionRate: pkg.commissionRate || '30',
         });
         setModalOpen(true);
     };
@@ -106,6 +110,7 @@ export default function PackagesPage() {
                 name: formData.name.trim(),
                 sessionCount: parseInt(formData.sessionCount, 10),
                 totalPrice: formData.totalPrice,
+                commissionRate: formData.commissionRate,
             };
 
             if (editingId) {
@@ -185,6 +190,7 @@ export default function PackagesPage() {
                                 <th>Nama Package</th>
                                 <th>Jumlah Sesi</th>
                                 <th>Harga</th>
+                                <th>Komisi</th>
                                 <th>Dibuat</th>
                                 <th>Aksi</th>
                             </tr>
@@ -192,7 +198,7 @@ export default function PackagesPage() {
                         <tbody>
                             {packages.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className={styles.emptyRow}>
+                                    <td colSpan={6} className={styles.emptyRow}>
                                         {loading ? 'Loading...' : 'Belum ada package. Klik "Tambah Package" untuk membuat.'}
                                     </td>
                                 </tr>
@@ -206,6 +212,11 @@ export default function PackagesPage() {
                                             </span>
                                         </td>
                                         <td className={styles.priceCell}>{formatPrice(pkg.totalPrice)}</td>
+                                        <td>
+                                            <span className={styles.sessionBadge}>
+                                                {pkg.commissionRate || 30}%
+                                            </span>
+                                        </td>
                                         <td className="text-muted text-sm">
                                             {new Date(pkg.createdAt).toLocaleDateString('id-ID')}
                                         </td>
@@ -269,6 +280,22 @@ export default function PackagesPage() {
                             placeholder="contoh: 350000"
                             required
                         />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor="commissionRate">Komisi Platform (%)</label>
+                        <input
+                            id="commissionRate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={formData.commissionRate}
+                            onChange={(e) => handleInputChange('commissionRate', e.target.value)}
+                            placeholder="30"
+                            required
+                        />
+                        <small className="text-muted">Persentase yang diterima platform (sisanya untuk therapist)</small>
                     </div>
 
                     <div className={styles.formActions}>

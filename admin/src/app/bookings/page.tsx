@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSettingsStore } from '../../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
 import { useRequireAuth } from '../../lib/useRequireAuth';
 import { Modal } from '../../components/Modal';
@@ -13,7 +13,7 @@ type BookingListItem = {
   paymentProvider?: string;
   paymentOrderId?: string | null;
   refundStatus?: string;
-  therapist?: { id: string; fullName?: string };
+  therapist?: { id: string; fullName?: string; user?: { fullName?: string } };
   user?: { id: string; fullName?: string };
   createdAt?: string;
   paymentExpiryTime?: string | null;
@@ -32,6 +32,7 @@ type BookingDetail = BookingListItem & {
 type Therapist = {
   id: string;
   user?: { fullName?: string };
+  fullName?: string; // For compatibility
   averageRating?: string;
 };
 
@@ -63,7 +64,7 @@ function formatInstruction(instr: Record<string, unknown> | null | undefined): s
 }
 
 export default function BookingListPage() {
-  const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+  const { adminToken, hydrate } = useSettingsStore();
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [items, setItems] = useState<BookingListItem[]>([]);
@@ -89,7 +90,7 @@ export default function BookingListPage() {
   useEffect(() => { hydrate(); }, [hydrate]);
 
   const loadList = useCallback(async () => {
-    if (!apiBaseUrl || !adminToken) {
+    if (!API_BASE_URL || !adminToken) {
       setError('Isi API Base URL dan Admin Token di Settings');
       return;
     }
@@ -104,7 +105,7 @@ export default function BookingListPage() {
 
     try {
       const res = await apiFetch<{ data: BookingListItem[] }>(
-        apiBaseUrl,
+        API_BASE_URL,
         `/bookings?${params.toString()}`,
         { tokenOverride: adminToken }
       );
@@ -116,14 +117,14 @@ export default function BookingListPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, apiBaseUrl, page, statusFilter, paymentStatusFilter]);
+  }, [adminToken, API_BASE_URL, page, statusFilter, paymentStatusFilter]);
 
   const loadDetail = useCallback(async (id: string) => {
-    if (!apiBaseUrl || !adminToken) return;
+    if (!API_BASE_URL || !adminToken) return;
     setLoading(true);
     try {
       const data = await apiFetch<BookingDetail>(
-        apiBaseUrl,
+        API_BASE_URL,
         `/bookings/${id}`,
         { tokenOverride: adminToken }
       );
@@ -134,13 +135,13 @@ export default function BookingListPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, apiBaseUrl]);
+  }, [adminToken, API_BASE_URL]);
 
   const loadTherapists = async () => {
-    if (!apiBaseUrl || !adminToken) return;
+    if (!API_BASE_URL || !adminToken) return;
     try {
       const res = await apiFetch<Therapist[]>(
-        apiBaseUrl,
+        API_BASE_URL,
         '/therapists',
         { tokenOverride: adminToken }
       );
@@ -162,7 +163,7 @@ export default function BookingListPage() {
 
     try {
       await apiFetch(
-        apiBaseUrl,
+        API_BASE_URL,
         `/admin/bookings/${detail.id}/swap-therapist`,
         {
           method: 'PATCH',
@@ -188,7 +189,7 @@ export default function BookingListPage() {
 
     try {
       await apiFetch(
-        apiBaseUrl,
+        API_BASE_URL,
         '/admin/bookings/refund',
         {
           method: 'POST',
@@ -304,7 +305,7 @@ export default function BookingListPage() {
                     )}
                   </td>
                   <td>{item.user?.fullName || '-'}</td>
-                  <td>{item.therapist?.fullName || '-'}</td>
+                  <td>{item.therapist?.user?.fullName || item.therapist?.fullName || '-'}</td>
                   <td className="text-sm text-muted">{formatDate(item.createdAt)}</td>
                 </tr>
               ))}
@@ -363,7 +364,7 @@ export default function BookingListPage() {
             </div>
             <div>
               <div className="text-sm text-muted">Therapist</div>
-              <div>{detail.therapist?.fullName || '-'}</div>
+              <div>{detail.therapist?.user?.fullName || detail.therapist?.fullName || '-'}</div>
             </div>
             <div>
               <div className="text-sm text-muted">Payment Expiry</div>
@@ -394,9 +395,12 @@ export default function BookingListPage() {
 
           {/* Actions */}
           <div className="flex gap-md">
-            <button className="btn btn-secondary" onClick={openSwapModal}>
-              🔄 Swap Therapist
-            </button>
+            {/* Only show swap button for ongoing bookings (PENDING or PAID, not COMPLETED/CANCELLED) */}
+            {(detail.status === 'PENDING' || detail.status === 'PAID') && (
+              <button className="btn btn-secondary" onClick={openSwapModal}>
+                🔄 Swap Therapist
+              </button>
+            )}
             {detail.refundStatus === 'PENDING' && (
               <button className="btn btn-primary" onClick={() => setRefundModalOpen(true)}>
                 💸 Complete Refund

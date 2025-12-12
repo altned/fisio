@@ -57,9 +57,13 @@ export class BookingService {
 
       const sessionCount = pkg?.sessionCount ?? 1;
 
-      // Calculate pricing from package if not provided
+      // Calculate pricing from package
       const totalPrice = input.totalPrice || pkg?.totalPrice || '0';
-      const adminFeeRate = 0.1; // 10% admin fee
+
+      // Commission rate from package (percentage), default to 30% if not set
+      const commissionRatePercent = pkg?.commissionRate ? Number(pkg.commissionRate) : 30;
+      const adminFeeRate = commissionRatePercent / 100; // Convert to decimal (e.g., 30% → 0.3)
+
       const adminFeeAmount = input.adminFeeAmount || (parseFloat(totalPrice) * adminFeeRate).toFixed(2);
       const therapistNetTotal = input.therapistNetTotal || (parseFloat(totalPrice) - parseFloat(adminFeeAmount)).toFixed(2);
 
@@ -265,7 +269,8 @@ export class BookingService {
 
   computeRespondBy(bookingType: BookingType): Date {
     const now = new Date();
-    const minutes = bookingType === 'INSTANT' ? 5 : 30;
+    // INSTANT: 5 minutes, REGULAR: 1 hour
+    const minutes = bookingType === 'INSTANT' ? 5 : 60; // 5min vs 1h
     return new Date(now.getTime() + minutes * 60 * 1000);
   }
 
@@ -355,6 +360,115 @@ export class BookingService {
     }
 
     return booking;
+  }
+
+  /**
+   * Cancel a session. If <1 hour before scheduled time, mark as FORFEITED and therapist still gets paid.
+   * If >1 hour before, mark as CANCELLED and return quota.
+   */
+  async cancelSession(sessionId: string, userId: string): Promise<Session> {
+    return this.dataSource.transaction(async (manager) => {
+      const sessionRepo = manager.getRepository(Session);
+      const bookingRepo = manager.getRepository(Booking);
+
+      const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['booking', 'booking.user', 'booking.therapist', 'booking.therapist.user', 'therapist'],
+      });
+      if (!session) throw new BadRequestException('Sesi tidak ditemukan');
+
+      // Only booking owner can cancel
+      if (session.booking.user.id !== userId) {
+        throw new ForbiddenException('Anda tidak dapat membatalkan sesi ini');
+      }
+
+      // Can only cancel SCHEDULED sessions
+      if (session.status !== 'SCHEDULED') {
+        throw new BadRequestException('Sesi tidak dapat dibatalkan (status: ' + session.status + ')');
+      }
+
+      const now = new Date();
+      const scheduledAt = session.scheduledAt;
+      if (!scheduledAt) {
+        throw new BadRequestException('Sesi belum dijadwalkan');
+      }
+
+      const hoursUntilSession = (scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilSession < 1) {
+        // FORFEIT: <1 hour before session - therapist still gets paid
+        session.status = 'FORFEITED';
+        await sessionRepo.save(session);
+
+        // Notify therapist about forfeited session
+        await this.notificationService.notifyPayoutSuccess({
+          therapistId: session.therapist.id,
+          deviceToken: session.booking.therapist.user?.fcmToken ?? undefined,
+          title: 'Sesi Di-forfeit',
+          body: 'Pasien membatalkan <1 jam sebelum sesi. Anda tetap mendapat payout.',
+          meta: { sessionId: session.id, bookingId: session.booking.id },
+        });
+      } else {
+        // SAFE CANCEL: >1 hour before session - restore quota
+        session.status = 'PENDING_SCHEDULING';
+        session.scheduledAt = null;
+        await sessionRepo.save(session);
+
+        // Notify therapist about cancellation
+        await this.notificationService.notifySwapTherapist({
+          therapistId: session.therapist.id,
+          deviceToken: session.booking.therapist.user?.fcmToken ?? undefined,
+          title: 'Sesi Dibatalkan',
+          body: 'Pasien membatalkan jadwal sesi. Slot dibebaskan.',
+          meta: { sessionId: session.id, bookingId: session.booking.id },
+        });
+      }
+
+      return session;
+    });
+  }
+
+  /**
+   * Mark a session as COMPLETED. Triggers payout to therapist.
+   */
+  async completeSession(sessionId: string, userId: string, therapistNotes?: string): Promise<Session> {
+    return this.dataSource.transaction(async (manager) => {
+      const sessionRepo = manager.getRepository(Session);
+      const therapistRepo = manager.getRepository(Therapist);
+
+      const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['booking', 'booking.user', 'booking.therapist', 'booking.therapist.user', 'therapist'],
+      });
+      if (!session) throw new BadRequestException('Sesi tidak ditemukan');
+
+      // Get therapist by user ID
+      const therapist = await therapistRepo.findOne({ where: { user: { id: userId } } });
+      if (!therapist || therapist.id !== session.therapist.id) {
+        throw new ForbiddenException('Hanya terapis yang ditugaskan yang dapat menyelesaikan sesi');
+      }
+
+      // Can only complete SCHEDULED sessions
+      if (session.status !== 'SCHEDULED') {
+        throw new BadRequestException('Sesi tidak dapat diselesaikan (status: ' + session.status + ')');
+      }
+
+      session.status = 'COMPLETED';
+      if (therapistNotes) {
+        session.therapistNotes = therapistNotes;
+      }
+      await sessionRepo.save(session);
+
+      // Notify patient about completed session
+      await this.notificationService.notifySwapTherapist({
+        userId: session.booking.user.id,
+        title: 'Sesi Selesai',
+        body: 'Terapis telah menyelesaikan sesi Anda. Silakan berikan review.',
+        meta: { sessionId: session.id, bookingId: session.booking.id },
+      });
+
+      return session;
+    });
   }
 }
 

@@ -80,6 +80,16 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Hidden: Booking Detail (accessed from list) */}
+      <Tabs.Screen
+        name="booking-detail"
+        options={{
+          title: 'Detail Booking',
+          href: null, // Hidden from tab bar
+          headerShown: true,
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{

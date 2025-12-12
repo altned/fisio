@@ -15,7 +15,7 @@ import {
     Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Card, Badge } from '@/components/ui';
@@ -357,8 +357,26 @@ export default function PaymentScreen() {
         }
     };
 
+    // Handle back navigation - go to booking detail, not home
+    const handleBack = () => {
+        router.replace({
+            pathname: '/(tabs)/booking-detail',
+            params: { bookingId: params.bookingId },
+        });
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+            <Stack.Screen
+                options={{
+                    title: 'Pembayaran',
+                    headerLeft: () => (
+                        <TouchableOpacity onPress={handleBack} style={{ padding: 8 }}>
+                            <Ionicons name="arrow-back" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    ),
+                }}
+            />
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={styles.header}>

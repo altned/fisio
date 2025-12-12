@@ -23,16 +23,19 @@ async function bootstrap() {
   const allowOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
     : ['http://localhost:3000', 'http://localhost:3001'];
+
+  // In development, allow all origins for mobile testing
+  const isDev = process.env.NODE_ENV !== 'production';
   app.enableCors({
-    origin: allowOrigins,
+    origin: isDev ? true : allowOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`HTTP server running on port ${port}`);
+  console.log(`HTTP server running on port ${port} (all interfaces)`);
 }
 
 bootstrap().catch((err) => {

@@ -24,6 +24,7 @@ import { TherapistModule } from './therapist/therapist.module';
 import { PackageModule } from './package/package.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { AppController } from '../presentation/app.controller';
 import { AppService } from '../services/app.service';
 
@@ -65,6 +66,7 @@ import { AppService } from '../services/app.service';
     PackageModule,
     WebhookModule,
     AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

@@ -27,6 +27,9 @@ export class Review {
   @Column({ type: 'smallint' })
   rating!: number;
 
+  @Column({ type: 'text', nullable: true })
+  comment!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 }

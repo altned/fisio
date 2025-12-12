@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSettingsStore } from '../../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
 import { useRequireAuth } from '../../lib/useRequireAuth';
 import { Modal } from '../../components/Modal';
@@ -12,17 +12,24 @@ type Therapist = {
     user?: { fullName?: string };
 };
 
+type Wallet = {
+    id: string;
+    balance: string;
+    therapist?: { id: string };
+};
+
 type WalletStats = {
     monthIncome: string;
 };
 
 export default function WalletsPage() {
-    const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+    const { adminToken, hydrate } = useSettingsStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [therapists, setTherapists] = useState<Therapist[]>([]);
     const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
+    const [wallet, setWallet] = useState<Wallet | null>(null);
     const [stats, setStats] = useState<WalletStats | null>(null);
     const [modalType, setModalType] = useState<'topup' | 'withdraw' | null>(null);
     const [amount, setAmount] = useState('');
@@ -32,13 +39,13 @@ export default function WalletsPage() {
     useEffect(() => { hydrate(); }, [hydrate]);
 
     const loadTherapists = useCallback(async () => {
-        if (!apiBaseUrl || !adminToken) return;
+        if (!API_BASE_URL || !adminToken) return;
         setLoading(true);
         setError(null);
 
         try {
             const res = await apiFetch<Therapist[]>(
-                apiBaseUrl,
+                API_BASE_URL,
                 '/therapists',
                 { tokenOverride: adminToken }
             );
@@ -48,28 +55,37 @@ export default function WalletsPage() {
         } finally {
             setLoading(false);
         }
-    }, [apiBaseUrl, adminToken]);
+    }, [API_BASE_URL, adminToken]);
 
-    const loadWalletStats = useCallback(async (therapistId: string) => {
-        if (!apiBaseUrl || !adminToken) return;
+    const loadWalletDetails = useCallback(async (therapistId: string) => {
+        if (!API_BASE_URL || !adminToken) return;
         setLoading(true);
 
         try {
-            // Note: wallet ID might be different from therapist ID
-            // For now assume they match or API handles it
-            const statsRes = await apiFetch<WalletStats>(
-                apiBaseUrl,
-                `/wallets/${therapistId}/stats/monthly`,
+            // Get wallet by therapist ID
+            const walletRes = await apiFetch<Wallet>(
+                API_BASE_URL,
+                `/wallets/by-therapist/${therapistId}`,
                 { tokenOverride: adminToken }
             );
-            setStats(statsRes);
+            setWallet(walletRes);
+
+            // Then get monthly stats using wallet ID
+            if (walletRes?.id) {
+                const statsRes = await apiFetch<WalletStats>(
+                    API_BASE_URL,
+                    `/wallets/${walletRes.id}/stats/monthly`,
+                    { tokenOverride: adminToken }
+                );
+                setStats(statsRes);
+            }
         } catch (err) {
-            // Stats might not be available
+            setWallet(null);
             setStats(null);
         } finally {
             setLoading(false);
         }
-    }, [apiBaseUrl, adminToken]);
+    }, [API_BASE_URL, adminToken]);
 
     const handleTopup = async () => {
         if (!selectedTherapist || !amount || !adminNote) {
@@ -81,7 +97,7 @@ export default function WalletsPage() {
 
         try {
             await apiFetch(
-                apiBaseUrl,
+                API_BASE_URL,
                 `/admin/wallets/${selectedTherapist.id}/topup`,
                 {
                     method: 'POST',
@@ -110,7 +126,7 @@ export default function WalletsPage() {
 
         try {
             await apiFetch(
-                apiBaseUrl,
+                API_BASE_URL,
                 `/admin/wallets/${selectedTherapist.id}/withdraw`,
                 {
                     method: 'POST',
@@ -130,8 +146,8 @@ export default function WalletsPage() {
     };
 
     useEffect(() => {
-        if (apiBaseUrl && adminToken) loadTherapists();
-    }, [apiBaseUrl, adminToken, loadTherapists]);
+        if (API_BASE_URL && adminToken) loadTherapists();
+    }, [API_BASE_URL, adminToken, loadTherapists]);
 
     if (!ready) return null;
 
@@ -160,7 +176,7 @@ export default function WalletsPage() {
                         style={{ cursor: 'pointer' }}
                         onClick={() => {
                             setSelectedTherapist(t);
-                            loadWalletStats(t.id);
+                            loadWalletDetails(t.id);
                         }}
                     >
                         <div className="stat-label">
@@ -196,9 +212,18 @@ export default function WalletsPage() {
                         </button>
                     </div>
 
+                    {wallet && (
+                        <div className="mb-md">
+                            <div className="text-sm text-muted">Saldo Aktif</div>
+                            <div className="stat-value" style={{ color: '#16a34a' }}>
+                                Rp {parseFloat(wallet.balance || '0').toLocaleString('id-ID')}
+                            </div>
+                        </div>
+                    )}
+
                     {stats && (
                         <div className="mb-md">
-                            <div className="text-sm text-muted">This Month Income</div>
+                            <div className="text-sm text-muted">Pendapatan Bulan Ini</div>
                             <div className="stat-value">
                                 Rp {parseFloat(stats.monthIncome || '0').toLocaleString('id-ID')}
                             </div>

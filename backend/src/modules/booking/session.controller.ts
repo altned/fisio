@@ -33,13 +33,13 @@ export class SessionController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('THERAPIST')
   @Throttle(10, 60)
-  complete(@Param('id') id: string) {
-    return this.sessionService.completeSession(id);
+  complete(@Param('id') id: string, @Body('notes') notes: string) {
+    return this.sessionService.completeSession(id, notes);
   }
 
   @Post(':id/cancel')
   @UseGuards(JwtGuard, RolesGuard)
-  @Roles('THERAPIST')
+  @Roles('PATIENT', 'THERAPIST')
   @Throttle(10, 60)
   cancel(@Param('id') id: string) {
     return this.sessionService.cancelSession(id);

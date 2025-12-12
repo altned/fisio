@@ -1,5 +1,5 @@
 /**
- * Bookings List Screen - Shows user's bookings with payment status
+ * Bookings List Screen - Shows user's bookings grouped by status
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -7,7 +7,7 @@ import {
     View,
     Text,
     StyleSheet,
-    FlatList,
+    SectionList,
     RefreshControl,
     TouchableOpacity,
     ActivityIndicator,
@@ -22,6 +22,12 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
 import { Booking } from '@/types';
 
+interface BookingSection {
+    title: string;
+    data: Booking[];
+    key: string;
+}
+
 export default function BookingsScreen() {
     const colors = Colors.light;
     const router = useRouter();
@@ -29,18 +35,17 @@ export default function BookingsScreen() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
-    const title = activeRole === 'THERAPIST' ? 'Jadwal Sesi' : 'Pesanan Saya';
+    const isTherapistRole = activeRole === 'THERAPIST';
+    const title = isTherapistRole ? 'Jadwal Sesi' : 'Pesanan';
 
     const fetchBookings = useCallback(async () => {
         try {
-            // For patient, we use a different endpoint (user's bookings)
-            // For now, get from admin endpoint or user-specific endpoint
             const data = await api.get<Booking[]>('/bookings/my');
             setBookings(data);
         } catch (error) {
             console.error('Failed to fetch bookings:', error);
-            // Fallback to empty array - endpoint might not exist yet
             setBookings([]);
         } finally {
             setLoading(false);
@@ -56,6 +61,43 @@ export default function BookingsScreen() {
         setRefreshing(true);
         fetchBookings();
     };
+
+    // Group bookings by status
+    const getSections = useCallback((): BookingSection[] => {
+        const active: Booking[] = [];
+        const pending: Booking[] = [];
+        const completed: Booking[] = [];
+        const cancelled: Booking[] = [];
+
+        bookings.forEach(booking => {
+            if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
+                cancelled.push(booking);
+            } else if (booking.status === 'COMPLETED') {
+                completed.push(booking);
+            } else if (booking.paymentStatus === 'PENDING') {
+                pending.push(booking);
+            } else {
+                active.push(booking);
+            }
+        });
+
+        const sections: BookingSection[] = [];
+
+        if (active.length > 0) {
+            sections.push({ title: '🟢 Aktif', data: active, key: 'active' });
+        }
+        if (pending.length > 0) {
+            sections.push({ title: '⏳ Menunggu Pembayaran', data: pending, key: 'pending' });
+        }
+        if (completed.length > 0) {
+            sections.push({ title: '✅ Selesai', data: completed, key: 'completed' });
+        }
+        if (cancelled.length > 0) {
+            sections.push({ title: '❌ Dibatalkan', data: cancelled, key: 'cancelled' });
+        }
+
+        return sections;
+    }, [bookings]);
 
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -75,24 +117,23 @@ export default function BookingsScreen() {
     };
 
     const handleBookingPress = (booking: Booking) => {
-        // If payment is pending, go to payment screen
-        if (booking.paymentStatus === 'PENDING' && booking.status === 'PENDING') {
-            router.push({
-                pathname: '/(tabs)/booking/step4-payment',
-                params: {
-                    bookingId: booking.id,
-                    totalPrice: booking.totalPrice,
-                    therapistName: booking.therapist?.user?.fullName || 'Terapis',
-                    packageName: booking.package?.name || 'Paket',
-                },
-            });
-        }
-        // TODO: Navigate to booking detail screen
+        // Always go to booking detail first - detail page handles payment navigation
+        router.push({
+            pathname: '/(tabs)/booking-detail',
+            params: { bookingId: booking.id },
+        });
     };
 
     const renderItem = ({ item }: { item: Booking }) => {
         const firstSession = item.sessions?.[0];
         const scheduledAt = firstSession?.scheduledAt;
+        const displayPrice = isTherapistRole ? item.therapistNetTotal : item.totalPrice;
+        const priceLabel = isTherapistRole ? 'Pendapatan' : 'Total';
+
+        const displayName = isTherapistRole
+            ? item.user?.fullName || 'Pasien'
+            : item.therapist?.user?.fullName || 'Terapis';
+        const displayLabel = isTherapistRole ? 'Pasien' : 'Terapis';
 
         return (
             <TouchableOpacity onPress={() => handleBookingPress(item)} activeOpacity={0.7}>
@@ -105,21 +146,23 @@ export default function BookingsScreen() {
                                 variant={getBookingStatusVariant(item.status)}
                                 size="sm"
                             />
-                            <Badge
-                                label={item.paymentStatus}
-                                variant={getPaymentStatusVariant(item.paymentStatus)}
-                                size="sm"
-                            />
+                            {!isTherapistRole && item.paymentStatus !== 'PAID' && (
+                                <Badge
+                                    label={item.paymentStatus}
+                                    variant={getPaymentStatusVariant(item.paymentStatus)}
+                                    size="sm"
+                                />
+                            )}
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                     </View>
 
-                    {/* Package & Therapist */}
+                    {/* Package & Person */}
                     <Text style={[styles.packageName, { color: colors.text }]}>
                         {item.package?.name || 'Paket'}
                     </Text>
                     <Text style={[styles.therapistName, { color: colors.textSecondary }]}>
-                        Terapis: {item.therapist?.user?.fullName || '-'}
+                        {displayLabel}: {displayName}
                     </Text>
 
                     {/* Schedule */}
@@ -132,23 +175,15 @@ export default function BookingsScreen() {
                         </View>
                     )}
 
-                    {/* Address preview */}
-                    <View style={styles.addressRow}>
-                        <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-                        <Text
-                            style={[styles.addressText, { color: colors.textMuted }]}
-                            numberOfLines={1}
-                        >
-                            {item.lockedAddress}
-                        </Text>
-                    </View>
-
                     {/* Footer with price */}
                     <View style={styles.cardFooter}>
-                        <Text style={[styles.price, { color: colors.primary }]}>
-                            {formatPrice(item.totalPrice)}
-                        </Text>
-                        {item.paymentStatus === 'PENDING' && (
+                        <View>
+                            <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>{priceLabel}</Text>
+                            <Text style={[styles.price, { color: isTherapistRole ? colors.success : colors.primary }]}>
+                                {formatPrice(displayPrice)}
+                            </Text>
+                        </View>
+                        {!isTherapistRole && item.paymentStatus === 'PENDING' && (
                             <Text style={[styles.pendingHint, { color: colors.warning }]}>
                                 Tap untuk bayar
                             </Text>
@@ -158,6 +193,15 @@ export default function BookingsScreen() {
             </TouchableOpacity>
         );
     };
+
+    const renderSectionHeader = ({ section }: { section: BookingSection }) => (
+        <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{section.title}</Text>
+            <Text style={[styles.sectionCount, { color: colors.textMuted }]}>
+                {section.data.length} pesanan
+            </Text>
+        </View>
+    );
 
     const renderEmpty = () => (
         <View style={styles.emptyContainer}>
@@ -179,6 +223,33 @@ export default function BookingsScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+                {/* Status Filter */}
+                <View style={[styles.filterContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <TouchableOpacity
+                        style={[styles.filterButton, statusFilter === 'all' && { backgroundColor: colors.primary }]}
+                        onPress={() => setStatusFilter('all')}
+                    >
+                        <Text style={[styles.filterText, statusFilter === 'all' && { color: '#fff' }]}>Semua</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterButton, statusFilter === 'pending' && { backgroundColor: colors.warning }]}
+                        onPress={() => setStatusFilter('pending')}
+                    >
+                        <Text style={[styles.filterText, statusFilter === 'pending' && { color: '#fff' }]}>Pending</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterButton, statusFilter === 'active' && { backgroundColor: colors.success }]}
+                        onPress={() => setStatusFilter('active')}
+                    >
+                        <Text style={[styles.filterText, statusFilter === 'active' && { color: '#fff' }]}>Aktif</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.filterButton, statusFilter === 'done' && { backgroundColor: colors.textMuted }]}
+                        onPress={() => setStatusFilter('done')}
+                    >
+                        <Text style={[styles.filterText, statusFilter === 'done' && { color: '#fff' }]}>Selesai</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {loading ? (
@@ -186,11 +257,19 @@ export default function BookingsScreen() {
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
-                <FlatList
-                    data={bookings}
+                <SectionList
+                    sections={getSections().filter(section => {
+                        if (statusFilter === 'all') return true;
+                        if (statusFilter === 'pending') return section.key === 'pending';
+                        if (statusFilter === 'active') return section.key === 'active';
+                        if (statusFilter === 'done') return section.key === 'completed' || section.key === 'cancelled';
+                        return true;
+                    })}
                     renderItem={renderItem}
+                    renderSectionHeader={renderSectionHeader}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
+                    stickySectionHeadersEnabled={false}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -216,6 +295,23 @@ const styles = StyleSheet.create({
     title: {
         fontSize: Typography.fontSize['2xl'],
         fontWeight: Typography.fontWeight.bold,
+    },
+    filterContainer: {
+        flexDirection: 'row',
+        marginTop: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        overflow: 'hidden',
+    },
+    filterButton: {
+        flex: 1,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
+        alignItems: 'center',
+    },
+    filterText: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.medium,
     },
     loadingContainer: {
         flex: 1,
@@ -257,15 +353,6 @@ const styles = StyleSheet.create({
     scheduleText: {
         fontSize: Typography.fontSize.sm,
     },
-    addressRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs,
-    },
-    addressText: {
-        fontSize: Typography.fontSize.sm,
-        flex: 1,
-    },
     cardFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -279,9 +366,27 @@ const styles = StyleSheet.create({
         fontSize: Typography.fontSize.lg,
         fontWeight: Typography.fontWeight.bold,
     },
+    priceLabel: {
+        fontSize: Typography.fontSize.xs,
+        marginBottom: 2,
+    },
     pendingHint: {
         fontSize: Typography.fontSize.xs,
         fontWeight: Typography.fontWeight.medium,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        marginTop: Spacing.md,
+    },
+    sectionTitle: {
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    sectionCount: {
+        fontSize: Typography.fontSize.xs,
     },
     emptyContainer: {
         flex: 1,

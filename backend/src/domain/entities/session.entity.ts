@@ -42,6 +42,9 @@ export class Session {
   @Column({ name: 'is_payout_distributed', type: 'boolean', default: false })
   isPayoutDistributed!: boolean;
 
+  @Column({ name: 'therapist_notes', type: 'text', nullable: true })
+  therapistNotes!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 

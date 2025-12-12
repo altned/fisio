@@ -29,6 +29,10 @@ class ApiClient {
     }
 
     private async loadToken() {
+        // Skip loading token during SSR (server-side rendering)
+        if (typeof window === 'undefined') {
+            return;
+        }
         try {
             this.token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
         } catch (e) {
@@ -38,6 +42,10 @@ class ApiClient {
 
     async setToken(token: string | null) {
         this.token = token;
+        // Skip AsyncStorage operations during SSR
+        if (typeof window === 'undefined') {
+            return;
+        }
         try {
             if (token) {
                 await AsyncStorage.setItem(STORAGE_KEY_TOKEN, token);
@@ -129,9 +137,79 @@ class ApiClient {
     delete<T>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'>) {
         return this.request<T>(endpoint, { ...options, method: 'DELETE' });
     }
+
+    // =========================================
+    // Therapist-specific API methods
+    // =========================================
+
+    /**
+     * Get bookings for authenticated user (works for both patient and therapist)
+     */
+    getMyBookings<T>() {
+        return this.get<T>('/bookings/my');
+    }
+
+    /**
+     * Accept a booking (therapist only)
+     */
+    acceptBooking<T>(bookingId: string, therapistId: string) {
+        return this.post<T>('/bookings/accept', { bookingId, therapistId });
+    }
+
+    /**
+     * Decline a booking (therapist only)
+     */
+    declineBooking<T>(bookingId: string, therapistId: string) {
+        return this.post<T>('/bookings/decline', { bookingId, therapistId });
+    }
+
+    /**
+     * Get booking detail
+     */
+    getBookingDetail<T>(bookingId: string) {
+        return this.get<T>(`/bookings/${bookingId}`);
+    }
+
+    /**
+     * Complete a session (therapist only)
+     */
+    completeSession<T>(sessionId: string, notes?: string) {
+        return this.post<T>(`/sessions/${sessionId}/complete`, { notes });
+    }
+
+    /**
+     * Cancel a session (patient/therapist)
+     * If <1hr before session: FORFEITED (therapist still paid)
+     * If >1hr before session: restored to PENDING_SCHEDULING
+     */
+    cancelSession<T>(sessionId: string) {
+        return this.post<T>(`/sessions/${sessionId}/cancel`);
+    }
+
+    /**
+     * Get wallet for authenticated therapist
+     */
+    getMyWallet<T>() {
+        return this.get<T>('/wallets/my');
+    }
+
+    /**
+     * Get wallet transactions
+     */
+    getWalletTransactions<T>(walletId: string, page = 1, limit = 20) {
+        return this.get<T>(`/wallets/${walletId}/transactions?page=${page}&limit=${limit}`);
+    }
+
+    /**
+     * Get wallet monthly stats
+     */
+    getWalletMonthlyStats<T>(walletId: string) {
+        return this.get<T>(`/wallets/${walletId}/stats/monthly`);
+    }
 }
 
 // Singleton instance
 export const api = new ApiClient();
 
 export default api;
+

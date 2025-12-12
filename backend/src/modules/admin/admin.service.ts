@@ -20,7 +20,7 @@ export class AdminService {
     private readonly dataSource: DataSource,
     private readonly notificationService: NotificationService,
     private readonly walletService: WalletService,
-  ) {}
+  ) { }
 
   async completeRefund(input: CompleteRefundDto, adminId?: string): Promise<Booking> {
     const repo = this.dataSource.getRepository(Booking);
@@ -199,6 +199,68 @@ export class AdminService {
       take,
     });
     return { data, page: Math.max(page, 1), limit: take, total };
+  }
+
+  /**
+   * Get platform revenue stats (commission from bookings)
+   */
+  async getRevenueStats() {
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // Total revenue (all time) from PAID/COMPLETED bookings
+    const totalResult = await bookingRepo
+      .createQueryBuilder('b')
+      .select('COALESCE(SUM(CAST(b.admin_fee_amount AS DECIMAL)), 0)', 'total')
+      .where('b.payment_status = :status', { status: 'PAID' })
+      .getRawOne<{ total: string }>();
+
+    // This month revenue
+    const monthResult = await bookingRepo
+      .createQueryBuilder('b')
+      .select('COALESCE(SUM(CAST(b.admin_fee_amount AS DECIMAL)), 0)', 'total')
+      .where('b.payment_status = :status', { status: 'PAID' })
+      .andWhere('EXTRACT(MONTH FROM b.created_at) = :month', { month: currentMonth })
+      .andWhere('EXTRACT(YEAR FROM b.created_at) = :year', { year: currentYear })
+      .getRawOne<{ total: string }>();
+
+    // Total gross revenue (all booking amounts)
+    const grossResult = await bookingRepo
+      .createQueryBuilder('b')
+      .select('COALESCE(SUM(CAST(b.total_price AS DECIMAL)), 0)', 'total')
+      .where('b.payment_status = :status', { status: 'PAID' })
+      .getRawOne<{ total: string }>();
+
+    // Count of paid bookings
+    const bookingCount = await bookingRepo
+      .createQueryBuilder('b')
+      .where('b.payment_status = :status', { status: 'PAID' })
+      .getCount();
+
+    // Monthly breakdown (last 6 months)
+    const monthlyBreakdown = await bookingRepo
+      .createQueryBuilder('b')
+      .select([
+        "TO_CHAR(b.created_at, 'YYYY-MM') as month",
+        'COALESCE(SUM(CAST(b.admin_fee_amount AS DECIMAL)), 0) as commission',
+        'COALESCE(SUM(CAST(b.total_price AS DECIMAL)), 0) as gross',
+        'COUNT(*) as count',
+      ])
+      .where('b.payment_status = :status', { status: 'PAID' })
+      .andWhere(`b.created_at >= NOW() - INTERVAL '6 months'`)
+      .groupBy("TO_CHAR(b.created_at, 'YYYY-MM')")
+      .orderBy("TO_CHAR(b.created_at, 'YYYY-MM')", 'ASC')
+      .getRawMany();
+
+    return {
+      totalCommission: totalResult?.total ?? '0',
+      monthCommission: monthResult?.total ?? '0',
+      totalGrossRevenue: grossResult?.total ?? '0',
+      totalBookings: bookingCount,
+      monthlyBreakdown,
+    };
   }
 
   private async logAdminAction(

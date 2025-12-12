@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -35,6 +35,30 @@ export default function ProfileScreen() {
         );
     };
 
+    const handleNotifikasi = () => {
+        Alert.alert(
+            'Notifikasi',
+            'Pengaturan notifikasi akan tersedia di update berikutnya.',
+            [{ text: 'OK' }]
+        );
+    };
+
+    const handleBantuan = () => {
+        Alert.alert(
+            'Bantuan',
+            'Butuh bantuan? Hubungi kami:\n\n📧 Email: support@fisioku.id\n📱 WhatsApp: +62 812-3456-7890\n\nJam operasional:\nSenin - Jumat: 08.00 - 17.00 WIB',
+            [{ text: 'OK' }]
+        );
+    };
+
+    const handleTerms = () => {
+        Alert.alert(
+            'Syarat & Ketentuan',
+            'Dengan menggunakan aplikasi Fisioku, Anda menyetujui:\n\n1. Layanan fisioterapi home visit\n2. Kebijakan pembatalan\n3. Perlindungan data pribadi\n4. Disclaimer medis\n\nUntuk detail lengkap, kunjungi website kami.',
+            [{ text: 'OK' }]
+        );
+    };
+
     const roleLabel = activeRole === 'THERAPIST' ? 'Fisioterapis' : 'Pasien';
 
     return (
@@ -57,28 +81,28 @@ export default function ProfileScreen() {
                     <MenuItem
                         icon="person-outline"
                         label="Edit Profil"
-                        onPress={() => { }}
+                        onPress={() => router.push('/profile-edit')}
                         colors={colors}
                     />
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
                     <MenuItem
                         icon="notifications-outline"
                         label="Notifikasi"
-                        onPress={() => { }}
+                        onPress={handleNotifikasi}
                         colors={colors}
                     />
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
                     <MenuItem
                         icon="help-circle-outline"
                         label="Bantuan"
-                        onPress={() => { }}
+                        onPress={handleBantuan}
                         colors={colors}
                     />
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
                     <MenuItem
                         icon="document-text-outline"
                         label="Syarat & Ketentuan"
-                        onPress={() => { }}
+                        onPress={handleTerms}
                         colors={colors}
                     />
                 </Card>
@@ -113,11 +137,11 @@ function MenuItem({
     colors: typeof Colors.light;
 }) {
     return (
-        <View style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
             <Ionicons name={icon} size={22} color={colors.textSecondary} />
             <Text style={[styles.menuLabel, { color: colors.text }]}>{label}</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </View>
+        </TouchableOpacity>
     );
 }
 

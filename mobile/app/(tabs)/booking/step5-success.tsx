@@ -7,6 +7,7 @@ import {
     View,
     Text,
     StyleSheet,
+    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,7 +15,6 @@ import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Card } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
 
 export default function SuccessScreen() {
     const colors = Colors.light;
@@ -30,13 +30,15 @@ export default function SuccessScreen() {
     };
 
     const handleViewBooking = () => {
-        // Navigate to booking detail (future implementation)
         router.replace('/(tabs)/bookings');
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.content}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Success Icon */}
                 <View style={[styles.iconContainer, { backgroundColor: colors.successLight || '#E8F5E9' }]}>
                     <Ionicons name="checkmark-circle" size={80} color={colors.success} />
@@ -87,10 +89,10 @@ export default function SuccessScreen() {
                         </Text>
                     </View>
                 </Card>
-            </View>
+            </ScrollView>
 
-            {/* Footer Buttons */}
-            <View style={styles.footer}>
+            {/* Footer Buttons - Fixed at bottom */}
+            <View style={[styles.footer, { backgroundColor: colors.background }]}>
                 <Button
                     title="Lihat Booking Saya"
                     onPress={handleViewBooking}
@@ -112,11 +114,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         padding: Spacing.xl,
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingTop: Spacing.xl * 2,
     },
     iconContainer: {
         width: 120,

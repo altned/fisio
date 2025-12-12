@@ -2,7 +2,17 @@
 
 import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { Sidebar } from '../components/Sidebar';
+import { Sidebar, SidebarProvider, useSidebar } from '../components/Sidebar';
+
+function MainContent({ children }: { children: ReactNode }) {
+    const { collapsed } = useSidebar();
+
+    return (
+        <main className={`app-main ${collapsed ? 'sidebar-collapsed' : ''}`}>
+            <div className="app-content">{children}</div>
+        </main>
+    );
+}
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -21,11 +31,11 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 
     // Regular pages with sidebar
     return (
-        <div className="app-layout">
-            <Sidebar />
-            <main className="app-main">
-                <div className="app-content">{children}</div>
-            </main>
-        </div>
+        <SidebarProvider>
+            <div className="app-layout">
+                <Sidebar />
+                <MainContent>{children}</MainContent>
+            </div>
+        </SidebarProvider>
     );
 }

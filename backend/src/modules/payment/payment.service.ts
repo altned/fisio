@@ -28,15 +28,15 @@ type MidtransNotification = {
   status_code: string;
   gross_amount: string;
   transaction_status:
-    | 'capture'
-    | 'settlement'
-    | 'pending'
-    | 'deny'
-    | 'cancel'
-    | 'expire'
-    | 'refund'
-    | 'partial_refund'
-    | 'authorize';
+  | 'capture'
+  | 'settlement'
+  | 'pending'
+  | 'deny'
+  | 'cancel'
+  | 'expire'
+  | 'refund'
+  | 'partial_refund'
+  | 'authorize';
   fraud_status?: 'accept' | 'challenge' | 'deny';
   signature_key: string;
   payment_type?: string;
@@ -54,7 +54,7 @@ export class PaymentService {
     private readonly dataSource: DataSource,
     private readonly bookingService: BookingService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async initiatePayment(payload: InitiatePaymentDto): Promise<MidtransChargeResult> {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -265,6 +265,71 @@ export class PaymentService {
     return { ok: true, status: nextPaymentStatus };
   }
 
+  /**
+   * ⚠️ DEV ONLY - Force a booking to PAID status without actual payment
+   * This method bypasses Midtrans and directly sets the booking to PAID.
+   * 
+   * !!! REMOVE OR DISABLE BEFORE PRODUCTION RELEASE !!!
+   * 
+   * @see DEV_NOTES.md for production checklist
+   */
+  async forcePaymentPaid(bookingId: string): Promise<{ ok: boolean; booking: Booking }> {
+    // Safety check: only allow in non-production environments
+    if (process.env.NODE_ENV === 'production') {
+      throw new BadRequestException('Force payment is not allowed in production');
+    }
+
+    const bookingRepo = this.dataSource.getRepository(Booking);
+    const sessionRepo = this.dataSource.getRepository(Session);
+
+    const booking = await bookingRepo.findOne({
+      where: { id: bookingId },
+      relations: ['therapist', 'therapist.user', 'user'],
+    });
+
+    if (!booking) {
+      throw new BadRequestException('Booking tidak ditemukan');
+    }
+
+    if (booking.status === 'PAID') {
+      return { ok: true, booking };
+    }
+
+    // Update booking to PAID status
+    booking.status = 'PAID';
+    booking.paymentStatus = 'PAID';
+    booking.paymentPayload = {
+      _devNote: 'Force paid via dev endpoint',
+      _timestamp: new Date().toISOString(),
+    };
+    booking.therapistRespondBy = this.bookingService.computeRespondBy(booking.bookingType);
+
+    // Set chat lock time if not set
+    if (!booking.chatLockedAt) {
+      const firstSession = await sessionRepo.findOne({
+        where: { booking: { id: booking.id }, sequenceOrder: 1 },
+      });
+      if (firstSession?.scheduledAt) {
+        booking.chatLockedAt = this.bookingService.computeChatLockAt(firstSession.scheduledAt);
+      }
+    }
+
+    const saved = await bookingRepo.save(booking);
+
+    this.logger.warn(`[DEV] Force payment PAID for booking_id=${bookingId}`);
+
+    // Send notifications
+    await this.notificationService.notifyBookingAccepted({
+      therapistId: booking.therapist.id,
+      deviceToken: booking.therapist.user?.fcmToken ?? undefined,
+      title: 'Pembayaran terkonfirmasi',
+      body: 'Booking siap direspons',
+      meta: { bookingId: booking.id },
+    });
+
+    return { ok: true, booking: saved };
+  }
+
   private buildOrderId(bookingId: string): string {
     const suffix = Date.now();
     return `${bookingId}-${suffix}`;
@@ -278,7 +343,12 @@ export class PaymentService {
   ): Record<string, unknown> {
     const transaction_details = { order_id: orderId, gross_amount: grossAmount };
     const customer_details = opts?.email ? { email: opts.email } : undefined;
-    const base: Record<string, unknown> = { transaction_details };
+    // Custom expiry: 2 hours instead of default 24 hours
+    const custom_expiry = {
+      expiry_duration: 120,
+      unit: 'minute',
+    };
+    const base: Record<string, unknown> = { transaction_details, custom_expiry };
     if (customer_details) base.customer_details = customer_details;
 
     if (channel === 'QRIS') {
@@ -317,6 +387,12 @@ export class PaymentService {
       process.env.MIDTRANS_IS_PRODUCTION === 'true'
         ? 'https://api.midtrans.com'
         : 'https://api.sandbox.midtrans.com';
+
+    // Debug logging
+    this.logger.debug(`Midtrans API call to: ${baseUrl}${path}`);
+    this.logger.debug(`Server key (first 20 chars): ${serverKey.substring(0, 20)}...`);
+    this.logger.debug(`Request body: ${JSON.stringify(body)}`);
+
     const fetchMod = await import('node-fetch');
     const res = await fetchMod.default(`${baseUrl}${path}`, {
       method: 'POST',
@@ -328,9 +404,15 @@ export class PaymentService {
     });
 
     const json = (await res.json()) as Record<string, unknown>;
+
+    // Log response for debugging
+    this.logger.debug(`Midtrans response status: ${res.status}`);
+    this.logger.debug(`Midtrans response: ${JSON.stringify(json)}`);
+
     if (!res.ok) {
       const statusCode = (json.status_code as string) ?? res.status.toString();
       const statusMessage = (json.status_message as string) ?? res.statusText;
+      this.logger.error(`Midtrans error: ${statusCode} - ${statusMessage}`);
       throw new BadRequestException(`Midtrans error ${statusCode}: ${statusMessage}`);
     }
     return json;

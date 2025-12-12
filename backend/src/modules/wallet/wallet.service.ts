@@ -4,6 +4,7 @@ import { Booking } from '../../domain/entities/booking.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { WalletTransaction, WalletTransactionCategory } from '../../domain/entities/wallet-transaction.entity';
 import { Wallet } from '../../domain/entities/wallet.entity';
+import { Therapist } from '../../domain/entities/therapist.entity';
 import { NotificationService } from '../notification/notification.service';
 import { WalletStats } from './dto/wallet-stats.dto';
 
@@ -12,7 +13,70 @@ export class WalletService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
+
+  async getWalletByTherapistId(therapistId: string): Promise<Wallet> {
+    const walletRepo = this.dataSource.getRepository(Wallet);
+    let wallet = await walletRepo.findOne({
+      where: { therapist: { id: therapistId } },
+      relations: ['therapist'],
+    });
+
+    if (!wallet) {
+      // Create wallet if doesn't exist
+      const therapistRepo = this.dataSource.getRepository(Therapist);
+      const therapist = await therapistRepo.findOne({ where: { id: therapistId } });
+      if (!therapist) throw new BadRequestException('Terapis tidak ditemukan');
+
+      wallet = walletRepo.create({ therapist, balance: '0' });
+      wallet = await walletRepo.save(wallet);
+    }
+
+    return wallet;
+  }
+
+  async getWalletByUserId(userId: string): Promise<Wallet> {
+    const walletRepo = this.dataSource.getRepository(Wallet);
+    const therapistRepo = this.dataSource.getRepository(Therapist);
+
+    // Find therapist by user ID
+    const therapist = await therapistRepo.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+    if (!therapist) throw new BadRequestException('Terapis tidak ditemukan');
+
+    let wallet = await walletRepo.findOne({
+      where: { therapist: { id: therapist.id } },
+      relations: ['therapist'],
+    });
+
+    if (!wallet) {
+      wallet = walletRepo.create({ therapist, balance: '0' });
+      wallet = await walletRepo.save(wallet);
+    }
+
+    return wallet;
+  }
+
+
+  async getTransactions(walletId: string, page = 1, limit = 20): Promise<{
+    data: WalletTransaction[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    const txRepo = this.dataSource.getRepository(WalletTransaction);
+
+    const [data, total] = await txRepo.findAndCount({
+      where: { wallet: { id: walletId } },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, page, limit, total };
+  }
 
   async payoutSession(sessionId: string, options?: { adminNote?: string }): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
@@ -98,3 +162,4 @@ export class WalletService {
     return { monthIncome: result?.sum ?? '0' };
   }
 }
+

@@ -40,7 +40,7 @@ export interface Package {
 }
 
 // Booking
-export type BookingStatus = 'PENDING' | 'PAID' | 'COMPLETED' | 'CANCELLED';
+export type BookingStatus = 'PENDING' | 'PAID' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'FAILED';
 export type RefundStatus = 'NONE' | 'PENDING' | 'COMPLETED';
 export type BookingType = 'REGULAR' | 'INSTANT';
@@ -63,6 +63,7 @@ export interface Booking {
     therapistRespondBy?: string | null;
     therapistAcceptedAt?: string | null;
     chatLockedAt?: string | null;
+    isChatActive?: boolean;
     createdAt: string;
     sessions?: Session[];
     // Consent fields

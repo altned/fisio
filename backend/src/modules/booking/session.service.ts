@@ -21,7 +21,11 @@ export class SessionService {
     @InjectQueue('payout') private readonly payoutQueue: Queue,
   ) { }
 
-  async completeSession(sessionId: string): Promise<Session> {
+  async completeSession(sessionId: string, notes: string): Promise<Session> {
+    if (!notes?.trim()) {
+      throw new BadRequestException('Catatan sesi wajib diisi');
+    }
+
     return this.dataSource.transaction(async (manager) => {
       const sessionRepo = manager.getRepository(Session);
       const bookingRepo = manager.getRepository(Booking);
@@ -35,6 +39,7 @@ export class SessionService {
       }
 
       session.status = 'COMPLETED';
+      session.therapistNotes = notes.trim();
       await sessionRepo.save(session);
 
       await this.updateChatLockIfFinished(bookingRepo, session.booking.id);
