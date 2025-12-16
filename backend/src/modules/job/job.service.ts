@@ -9,6 +9,7 @@ export class JobService implements OnModuleInit {
     @InjectQueue('chat-lock') private readonly chatLockQueue: Queue,
     @InjectQueue('therapist-timeout') private readonly timeoutQueue: Queue,
     @InjectQueue('payment-expiry') private readonly paymentExpiryQueue: Queue,
+    @InjectQueue('booking-complete') private readonly bookingCompleteQueue: Queue,
   ) { }
 
   async onModuleInit() {
@@ -20,6 +21,7 @@ export class JobService implements OnModuleInit {
     await this.chatLockQueue.removeRepeatableByKey('*');
     await this.timeoutQueue.removeRepeatableByKey('*');
     await this.paymentExpiryQueue.removeRepeatableByKey('*');
+    await this.bookingCompleteQueue.removeRepeatableByKey('*');
 
     await this.expiryQueue.add(
       'run',
@@ -44,5 +46,13 @@ export class JobService implements OnModuleInit {
       {},
       { repeat: { every: 5 * 60 * 1000 }, jobId: 'payment-expiry-5m' },
     );
+
+    // Auto-complete bookings when all sessions are finished - runs every 5 minutes
+    await this.bookingCompleteQueue.add(
+      'run',
+      {},
+      { repeat: { every: 5 * 60 * 1000 }, jobId: 'booking-complete-5m' },
+    );
   }
 }
+

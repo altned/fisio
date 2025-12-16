@@ -35,6 +35,9 @@ export class Therapist {
   @Column({ type: 'text', nullable: true })
   address!: string | null;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city!: string | null;
+
   @Column({ name: 'photo_url', type: 'varchar', length: 500, nullable: true })
   photoUrl!: string | null;
 

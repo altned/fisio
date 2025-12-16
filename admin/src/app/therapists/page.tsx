@@ -16,11 +16,40 @@ const BIDANG_OPTIONS = [
     'Fisioterapi Olahraga',
 ];
 
+const CITY_OPTIONS = [
+    'Jakarta',
+    'Surabaya',
+    'Bandung',
+    'Medan',
+    'Semarang',
+    'Makassar',
+    'Palembang',
+    'Tangerang',
+    'Depok',
+    'Bekasi',
+    'Bogor',
+    'Yogyakarta',
+    'Solo',
+    'Malang',
+    'Denpasar',
+    'Batam',
+    'Pekanbaru',
+    'Balikpapan',
+    'Pontianak',
+    'Manado',
+    'Banjarmasin',
+    'Padang',
+    'Samarinda',
+    'Cirebon',
+    'Jambi',
+];
+
 type Therapist = {
     id: string;
     bidang: string | null;
     phone: string | null;
     address: string | null;
+    city: string | null;
     photoUrl: string | null;
     strNumber: string | null;
     experienceYears: number;
@@ -39,6 +68,7 @@ type CreateFormData = {
     bidang: string;
     phone: string;
     address: string;
+    city: string;
     strNumber: string;
     experienceYears: string;
     bio: string;
@@ -48,6 +78,7 @@ type EditFormData = {
     bidang: string;
     phone: string;
     address: string;
+    city: string;
     strNumber: string;
     experienceYears: string;
     bio: string;
@@ -60,6 +91,7 @@ const initialCreateForm: CreateFormData = {
     bidang: '',
     phone: '',
     address: '',
+    city: '',
     strNumber: '',
     experienceYears: '0',
     bio: '',
@@ -80,7 +112,7 @@ export default function TherapistsPage() {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingTherapist, setEditingTherapist] = useState<Therapist | null>(null);
     const [editForm, setEditForm] = useState<EditFormData>({
-        bidang: '', phone: '', address: '', strNumber: '', experienceYears: '0', bio: ''
+        bidang: '', phone: '', address: '', city: '', strNumber: '', experienceYears: '0', bio: ''
     });
 
     // Reset password state
@@ -142,6 +174,7 @@ export default function TherapistsPage() {
                 bidang: createForm.bidang || undefined,
                 phone: createForm.phone.trim() || undefined,
                 address: createForm.address.trim() || undefined,
+                city: createForm.city || undefined,
                 strNumber: createForm.strNumber.trim() || undefined,
                 experienceYears: parseInt(createForm.experienceYears, 10) || 0,
                 bio: createForm.bio.trim() || undefined,
@@ -169,6 +202,7 @@ export default function TherapistsPage() {
             bidang: t.bidang || '',
             phone: t.phone || '',
             address: t.address || '',
+            city: t.city || '',
             strNumber: t.strNumber || '',
             experienceYears: t.experienceYears.toString(),
             bio: t.bio || '',
@@ -188,6 +222,7 @@ export default function TherapistsPage() {
                 bidang: editForm.bidang || undefined,
                 phone: editForm.phone.trim() || undefined,
                 address: editForm.address.trim() || undefined,
+                city: editForm.city || undefined,
                 strNumber: editForm.strNumber.trim() || undefined,
                 experienceYears: parseInt(editForm.experienceYears, 10) || 0,
                 bio: editForm.bio.trim() || undefined,
@@ -453,14 +488,29 @@ export default function TherapistsPage() {
                         </div>
                     </div>
 
-                    <div className={styles.formGroup}>
-                        <label htmlFor="address">Alamat</label>
-                        <textarea
-                            id="address"
-                            value={createForm.address}
-                            onChange={(e) => handleCreateFormChange('address', e.target.value)}
-                            placeholder="Alamat lengkap therapist"
-                        />
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="address">Alamat</label>
+                            <textarea
+                                id="address"
+                                value={createForm.address}
+                                onChange={(e) => handleCreateFormChange('address', e.target.value)}
+                                placeholder="Alamat lengkap therapist"
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="city">Kota</label>
+                            <select
+                                id="city"
+                                value={createForm.city}
+                                onChange={(e) => handleCreateFormChange('city', e.target.value)}
+                            >
+                                <option value="">Pilih Kota</option>
+                                {CITY_OPTIONS.map((city) => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className={styles.formGroup}>
@@ -536,14 +586,29 @@ export default function TherapistsPage() {
                         </div>
                     </div>
 
-                    <div className={styles.formGroup}>
-                        <label htmlFor="editAddress">Alamat</label>
-                        <textarea
-                            id="editAddress"
-                            value={editForm.address}
-                            onChange={(e) => handleEditFormChange('address', e.target.value)}
-                            placeholder="Alamat lengkap therapist"
-                        />
+                    <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="editAddress">Alamat</label>
+                            <textarea
+                                id="editAddress"
+                                value={editForm.address}
+                                onChange={(e) => handleEditFormChange('address', e.target.value)}
+                                placeholder="Alamat lengkap therapist"
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="editCity">Kota</label>
+                            <select
+                                id="editCity"
+                                value={editForm.city}
+                                onChange={(e) => handleEditFormChange('city', e.target.value)}
+                            >
+                                <option value="">Pilih Kota</option>
+                                {CITY_OPTIONS.map((city) => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className={styles.formGroup}>

@@ -3,4 +3,6 @@ export class UpdatePackageDto {
     sessionCount?: number;
     totalPrice?: string;
     commissionRate?: string;
+    promoImageUrl?: string;
+    showOnDashboard?: boolean;
 }

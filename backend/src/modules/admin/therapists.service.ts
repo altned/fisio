@@ -63,6 +63,7 @@ export class TherapistsService {
                 bidang: dto.bidang || null,
                 phone: dto.phone || null,
                 address: dto.address || null,
+                city: dto.city || null,
                 strNumber: dto.strNumber || null,
                 experienceYears: dto.experienceYears || 0,
                 bio: dto.bio || null,
@@ -88,6 +89,7 @@ export class TherapistsService {
         if (dto.bidang !== undefined) therapist.bidang = dto.bidang;
         if (dto.phone !== undefined) therapist.phone = dto.phone;
         if (dto.address !== undefined) therapist.address = dto.address;
+        if (dto.city !== undefined) therapist.city = dto.city;
         if (dto.photoUrl !== undefined) therapist.photoUrl = dto.photoUrl;
         if (dto.strNumber !== undefined) therapist.strNumber = dto.strNumber;
         if (dto.experienceYears !== undefined) therapist.experienceYears = dto.experienceYears;

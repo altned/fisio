@@ -40,6 +40,8 @@ export class PackagesService {
             sessionCount: dto.sessionCount,
             totalPrice: dto.totalPrice,
             commissionRate: dto.commissionRate || '30', // Default 30%
+            promoImageUrl: dto.promoImageUrl || null,
+            showOnDashboard: dto.showOnDashboard || false,
         });
         return repo.save(pkg);
     }
@@ -77,6 +79,14 @@ export class PackagesService {
                 throw new BadRequestException('Commission rate harus antara 0-100');
             }
             pkg.commissionRate = dto.commissionRate;
+        }
+
+        if (dto.promoImageUrl !== undefined) {
+            pkg.promoImageUrl = dto.promoImageUrl || null;
+        }
+
+        if (dto.showOnDashboard !== undefined) {
+            pkg.showOnDashboard = dto.showOnDashboard;
         }
 
         return repo.save(pkg);

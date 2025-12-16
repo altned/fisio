@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
-import { Card, Badge, getBookingStatusVariant, getPaymentStatusVariant } from '@/components/ui';
+import { Card, Badge, getBookingStatusVariant, getPaymentStatusVariant, EmptyState, SkeletonBookingCard } from '@/components/ui';
 import { useAuthStore } from '@/store/auth';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
@@ -204,18 +204,22 @@ export default function BookingsScreen() {
     );
 
     const renderEmpty = () => (
-        <View style={styles.emptyContainer}>
-            <Card>
-                <View style={styles.emptyState}>
-                    <Ionicons name="calendar-outline" size={64} color={colors.textMuted} />
-                    <Text style={[styles.emptyTitle, { color: colors.text }]}>Belum Ada Pesanan</Text>
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        {activeRole === 'THERAPIST'
-                            ? 'Anda belum memiliki booking saat ini'
-                            : 'Buat booking pertama Anda untuk memulai'}
-                    </Text>
-                </View>
-            </Card>
+        <EmptyState
+            variant="bookings"
+            title={activeRole === 'THERAPIST' ? 'Belum Ada Jadwal' : 'Belum Ada Pesanan'}
+            message={activeRole === 'THERAPIST'
+                ? 'Anda belum memiliki booking saat ini. Booking baru akan muncul di sini.'
+                : 'Buat booking pertama Anda untuk memulai perjalanan kesehatan!'}
+            actionLabel={activeRole === 'PATIENT' ? 'Cari Terapis' : undefined}
+            onAction={activeRole === 'PATIENT' ? () => router.push('/') : undefined}
+        />
+    );
+
+    const renderLoading = () => (
+        <View style={styles.listContent}>
+            <SkeletonBookingCard />
+            <SkeletonBookingCard />
+            <SkeletonBookingCard />
         </View>
     );
 
@@ -253,9 +257,7 @@ export default function BookingsScreen() {
             </View>
 
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                </View>
+                renderLoading()
             ) : (
                 <SectionList
                     sections={getSections().filter(section => {

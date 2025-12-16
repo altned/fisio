@@ -4,7 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.18.207:3000';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.18.207:3000';
 const STORAGE_KEY_TOKEN = '@fisioku_token';
 
 interface RequestOptions {
@@ -205,6 +205,13 @@ class ApiClient {
      */
     getWalletMonthlyStats<T>(walletId: string) {
         return this.get<T>(`/wallets/${walletId}/stats/monthly`);
+    }
+
+    /**
+     * Submit a review for a booking
+     */
+    submitReview<T>(bookingId: string, therapistId: string, rating: number, comment?: string) {
+        return this.post<T>('/reviews', { bookingId, therapistId, rating, comment });
     }
 }
 

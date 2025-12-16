@@ -3,4 +3,6 @@ export class CreatePackageDto {
     sessionCount!: number;
     totalPrice!: string;
     commissionRate?: string; // Percentage taken by platform (e.g., "30" means 30%)
+    promoImageUrl?: string;
+    showOnDashboard?: boolean;
 }

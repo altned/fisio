@@ -31,6 +31,10 @@ export default function LoginScreen() {
     const [error, setError] = useState<string | null>(null);
 
     const handleLogin = async () => {
+        console.log('=== LOGIN ATTEMPT ===');
+        console.log('Email:', email);
+        console.log('Password:', password ? '******' : '(empty)');
+
         if (!email || !password) {
             setError('Email dan password wajib diisi');
             return;
@@ -39,9 +43,12 @@ export default function LoginScreen() {
         setError(null);
 
         try {
+            console.log('Calling login API...');
             await login(email, password);
+            console.log('Login successful!');
             // Navigation will be handled by _layout.tsx
         } catch (err: any) {
+            console.error('Login failed:', err);
             setError(err.message || 'Login gagal');
         }
     };

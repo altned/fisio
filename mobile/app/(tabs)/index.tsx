@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius, Shadow } from '@/constants/Theme';
 import { Button, Card } from '@/components/ui';
+import { PromoBannerCarousel } from '@/components/PromoBannerCarousel';
 import { useAuthStore } from '@/store/auth';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
@@ -406,6 +407,9 @@ export default function HomeScreen() {
               <Ionicons name="person" size={24} color={colors.primary} />
             </View>
           </View>
+
+          {/* Promo Banner Carousel */}
+          <PromoBannerCarousel />
 
           {/* Quick Action */}
           <Card style={styles.quickAction}>

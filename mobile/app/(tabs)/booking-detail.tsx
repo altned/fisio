@@ -74,21 +74,27 @@ function getSessionStatusInfo(status: string): { label: string; color: string; i
 function SessionCard({
     session,
     isTherapist,
+    hasReviewed,
     onComplete,
     onCancel,
+    onReview,
     isLoading,
 }: {
     session: Session;
     isTherapist: boolean;
+    hasReviewed: boolean;
     onComplete: () => void;
     onCancel: () => void;
+    onReview: () => void;
     isLoading: boolean;
 }) {
     const colors = Colors.light;
     const statusInfo = getSessionStatusInfo(session.status);
     const isScheduled = session.status === 'SCHEDULED';
+    const isCompleted = session.status === 'COMPLETED';
     const canComplete = isTherapist && isScheduled;
     const canCancel = !isTherapist && isScheduled; // Patient can cancel scheduled sessions
+    const canReview = !isTherapist && isCompleted && !hasReviewed; // Patient can review completed sessions if not reviewed yet
 
     return (
         <View style={[styles.sessionCard, { borderColor: colors.border }]}>
@@ -127,7 +133,7 @@ function SessionCard({
             )}
 
             {/* Action Buttons */}
-            {(canComplete || canCancel) && (
+            {(canComplete || canCancel || canReview) && (
                 <View style={styles.sessionActions}>
                     {canComplete && (
                         <TouchableOpacity
@@ -159,6 +165,16 @@ function SessionCard({
                                     <Text style={styles.sessionActionButtonText}>Batalkan</Text>
                                 </>
                             )}
+                        </TouchableOpacity>
+                    )}
+                    {canReview && (
+                        <TouchableOpacity
+                            style={[styles.sessionActionButton, { backgroundColor: colors.primary }]}
+                            onPress={onReview}
+                            disabled={isLoading}
+                        >
+                            <Ionicons name="star" size={18} color="#fff" />
+                            <Text style={styles.sessionActionButtonText}>Beri Review</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -424,8 +440,17 @@ export default function BookingDetailScreen() {
                             key={session.id}
                             session={session}
                             isTherapist={isTherapist}
+                            hasReviewed={booking.hasReviewed || false}
                             onComplete={() => handleCompleteSession(session)}
                             onCancel={() => handleCancelSession(session)}
+                            onReview={() => router.push({
+                                pathname: '/review',
+                                params: {
+                                    bookingId: booking.id,
+                                    therapistId: booking.therapist?.id || '',
+                                    therapistName: booking.therapist?.user?.fullName || 'Terapis',
+                                }
+                            })}
                             isLoading={loadingSessionId === session.id}
                         />
                     ))}

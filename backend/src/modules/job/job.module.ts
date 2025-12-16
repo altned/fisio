@@ -5,6 +5,7 @@ import { ChatLockProcessor } from './processors/chat-lock.processor';
 import { TimeoutProcessor } from './processors/timeout.processor';
 import { PayoutProcessor } from './processors/payout.processor';
 import { PaymentExpiryProcessor } from './processors/payment-expiry.processor';
+import { BookingCompleteProcessor } from './processors/booking-complete.processor';
 import { BookingModule } from '../booking/booking.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { ChatModule } from '../chat/chat.module';
@@ -26,12 +27,23 @@ import { QueueEventsListener } from './listeners/queue-events.listener';
       { name: 'therapist-timeout' },
       { name: 'payout' },
       { name: 'payment-expiry' },
+      { name: 'booking-complete' },
     ),
     BookingModule,
     WalletModule,
     ChatModule,
     NotificationModule,
   ],
-  providers: [ExpiryProcessor, ChatLockProcessor, TimeoutProcessor, PayoutProcessor, PaymentExpiryProcessor, JobService, QueueEventsListener],
+  providers: [
+    ExpiryProcessor,
+    ChatLockProcessor,
+    TimeoutProcessor,
+    PayoutProcessor,
+    PaymentExpiryProcessor,
+    BookingCompleteProcessor,
+    JobService,
+    QueueEventsListener,
+  ],
 })
 export class JobModule { }
+

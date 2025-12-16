@@ -21,10 +21,24 @@ export interface AuthResponse {
 }
 
 // Therapist
+export type TherapistBidang =
+    | 'Fisioterapi Muskuloskeletal'
+    | 'Fisioterapi Neuromuskular'
+    | 'Fisioterapi Kardiopulmoner'
+    | 'Fisioterapi Pediatrik'
+    | 'Fisioterapi Geriatrik'
+    | 'Fisioterapi Olahraga';
+
 export interface Therapist {
     id: string;
+    bidang?: TherapistBidang | string | null;
+    address?: string | null;
+    city?: string | null;
+    experienceYears?: number;
     averageRating: string;
     totalReviews: number;
+    photoUrl?: string | null;
+    bio?: string | null;
     user?: {
         id: string;
         fullName: string;
@@ -64,6 +78,7 @@ export interface Booking {
     therapistAcceptedAt?: string | null;
     chatLockedAt?: string | null;
     isChatActive?: boolean;
+    hasReviewed?: boolean;
     createdAt: string;
     sessions?: Session[];
     // Consent fields

@@ -148,6 +148,7 @@ export class SessionService {
     );
     if (remaining.length > 0) return;
 
+    // All sessions are finished - mark booking as COMPLETED
     const completedSessions = booking.sessions.filter(
       (s) => s.status === 'COMPLETED' || s.status === 'FORFEITED' || s.status === 'EXPIRED',
     );
@@ -157,6 +158,12 @@ export class SessionService {
 
     const baseTime = latest?.scheduledAt ?? new Date();
     booking.chatLockedAt = new Date(baseTime.getTime() + CHAT_LOCK_BUFFER_HOURS * 3600 * 1000);
+
+    // Update booking status to COMPLETED if still PAID
+    if (booking.status === 'PAID') {
+      booking.status = 'COMPLETED';
+    }
+
     await bookingRepo.save(booking);
   }
 

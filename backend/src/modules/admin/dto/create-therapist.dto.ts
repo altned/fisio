@@ -8,6 +8,7 @@ export class CreateTherapistDto {
     bidang?: string;
     phone?: string;
     address?: string;
+    city?: string;
     strNumber?: string;
     experienceYears?: number;
     bio?: string;

@@ -9,10 +9,17 @@ export class TherapistService {
   async list(): Promise<Therapist[]> {
     return this.dataSource.getRepository(Therapist).find({
       relations: ['user'],
+      where: { isActive: true },
       select: {
         id: true,
+        bidang: true,
+        address: true,
+        city: true,
+        experienceYears: true,
         averageRating: true,
         totalReviews: true,
+        photoUrl: true,
+        bio: true,
         user: {
           id: true,
           fullName: true,
@@ -28,8 +35,16 @@ export class TherapistService {
       relations: ['user'],
       select: {
         id: true,
+        bidang: true,
+        address: true,
+        city: true,
+        experienceYears: true,
         averageRating: true,
         totalReviews: true,
+        photoUrl: true,
+        bio: true,
+        phone: true,
+        strNumber: true,
         user: {
           id: true,
           fullName: true,

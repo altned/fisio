@@ -11,4 +11,21 @@ export class PackageService {
             order: { totalPrice: 'ASC' },
         });
     }
+
+    /**
+     * Get packages marked for promo carousel on patient dashboard
+     */
+    async promos() {
+        return this.dataSource.getRepository(Package).find({
+            where: { showOnDashboard: true },
+            select: {
+                id: true,
+                name: true,
+                sessionCount: true,
+                totalPrice: true,
+                promoImageUrl: true,
+            },
+            order: { createdAt: 'DESC' },
+        });
+    }
 }

@@ -1,5 +1,5 @@
 /**
- * Review Screen - Patient leaves rating and optional comment after session
+ * Review Screen - Submit rating and comment after session completion
  */
 
 import React, { useState } from 'react';
@@ -7,16 +7,17 @@ import {
     View,
     Text,
     StyleSheet,
+    ScrollView,
     TextInput,
     Alert,
-    ScrollView,
-    TouchableOpacity,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, StarRating } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
 
@@ -36,131 +37,129 @@ export default function ReviewScreen() {
 
     const handleSubmit = async () => {
         if (rating === 0) {
-            Alert.alert('Rating Wajib', 'Silakan pilih rating bintang.');
+            Alert.alert('Rating Diperlukan', 'Silakan berikan rating minimal 1 bintang');
             return;
         }
 
+        if (!params.bookingId || !params.therapistId) {
+            Alert.alert('Error', 'Data booking tidak lengkap');
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
-            setIsSubmitting(true);
-            await api.post('/reviews', {
-                bookingId: params.bookingId,
-                therapistId: params.therapistId,
+            await api.submitReview(
+                params.bookingId,
+                params.therapistId,
                 rating,
-                comment: comment.trim() || null,
-            });
+                comment.trim() || undefined
+            );
             Alert.alert(
                 'Terima Kasih!',
-                'Review Anda telah dikirim.',
-                [{ text: 'OK', onPress: () => router.replace('/(tabs)/bookings') }]
+                'Review Anda telah berhasil dikirim.',
+                [{ text: 'OK', onPress: () => router.back() }]
             );
-        } catch (error: any) {
-            Alert.alert('Error', error.message || 'Gagal mengirim review');
+        } catch (err: any) {
+            Alert.alert('Gagal', err.message || 'Gagal mengirim review');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const renderStars = () => {
-        return (
-            <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity
-                        key={star}
-                        onPress={() => setRating(star)}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons
-                            name={star <= rating ? 'star' : 'star-outline'}
-                            size={48}
-                            color={star <= rating ? '#FFD700' : colors.textMuted}
-                        />
-                    </TouchableOpacity>
-                ))}
-            </View>
-        );
-    };
-
-    const getRatingText = () => {
-        switch (rating) {
-            case 1: return 'Sangat Buruk';
-            case 2: return 'Buruk';
-            case 3: return 'Cukup';
-            case 4: return 'Baik';
-            case 5: return 'Sangat Baik';
-            default: return 'Pilih rating';
-        }
-    };
-
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <Stack.Screen options={{ title: 'Beri Review' }} />
-
-            <ScrollView contentContainerStyle={styles.content}>
-                {/* Therapist Info */}
-                <Card style={styles.infoCard}>
-                    <View style={styles.therapistInfo}>
-                        <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-                            <Ionicons name="person" size={32} color={colors.primary} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <Stack.Screen
+                options={{
+                    title: 'Berikan Review',
+                    headerStyle: { backgroundColor: colors.card },
+                    headerTitleStyle: { color: colors.text },
+                }}
+            />
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
+                            <Ionicons name="star" size={40} color={colors.primary} />
                         </View>
-                        <View style={styles.therapistText}>
-                            <Text style={[styles.therapistName, { color: colors.text }]}>
-                                {params.therapistName}
-                            </Text>
-                            <Text style={[styles.packageName, { color: colors.textSecondary }]}>
-                                {params.packageName}
-                            </Text>
-                        </View>
+                        <Text style={[styles.title, { color: colors.text }]}>
+                            Bagaimana pengalaman Anda?
+                        </Text>
+                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                            Review Anda membantu terapis dan pasien lainnya
+                        </Text>
                     </View>
-                </Card>
 
-                {/* Rating Section */}
-                <View style={styles.ratingSection}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        Bagaimana pengalaman Anda?
-                    </Text>
-                    {renderStars()}
-                    <Text style={[
-                        styles.ratingText,
-                        { color: rating > 0 ? colors.primary : colors.textMuted }
-                    ]}>
-                        {getRatingText()}
-                    </Text>
-                </View>
+                    {/* Therapist Info */}
+                    <Card style={styles.therapistCard}>
+                        <View style={styles.therapistRow}>
+                            <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
+                                <Ionicons name="person" size={24} color={colors.primary} />
+                            </View>
+                            <View>
+                                <Text style={[styles.therapistName, { color: colors.text }]}>
+                                    {params.therapistName || 'Terapis'}
+                                </Text>
+                                <Text style={[styles.packageName, { color: colors.textSecondary }]}>
+                                    {params.packageName || 'Paket Fisioterapi'}
+                                </Text>
+                            </View>
+                        </View>
+                    </Card>
 
-                {/* Comment Section */}
-                <View style={styles.commentSection}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        Komentar <Text style={{ color: colors.textMuted }}>(opsional)</Text>
-                    </Text>
-                    <TextInput
-                        style={[
-                            styles.commentInput,
-                            {
-                                backgroundColor: colors.card,
-                                color: colors.text,
-                                borderColor: colors.border,
-                            }
-                        ]}
-                        placeholder="Ceritakan pengalaman Anda dengan terapis ini..."
-                        placeholderTextColor={colors.textMuted}
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                        value={comment}
-                        onChangeText={setComment}
+                    {/* Rating */}
+                    <Card style={styles.ratingCard}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                            Rating
+                        </Text>
+                        <StarRating
+                            rating={rating}
+                            onRatingChange={setRating}
+                            size={40}
+                            editable={!isSubmitting}
+                        />
+                    </Card>
+
+                    {/* Comment */}
+                    <Card style={styles.commentCard}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                            Komentar (Opsional)
+                        </Text>
+                        <TextInput
+                            style={[
+                                styles.textInput,
+                                {
+                                    backgroundColor: colors.background,
+                                    color: colors.text,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                            placeholder="Ceritakan pengalaman Anda dengan terapis ini..."
+                            placeholderTextColor={colors.textMuted}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            value={comment}
+                            onChangeText={setComment}
+                            editable={!isSubmitting}
+                        />
+                    </Card>
+                </ScrollView>
+
+                {/* Submit Button */}
+                <View style={[styles.footer, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+                    <Button
+                        title={isSubmitting ? 'Mengirim...' : 'Kirim Review'}
+                        onPress={handleSubmit}
+                        variant="primary"
+                        disabled={isSubmitting || rating === 0}
+                        fullWidth
                     />
                 </View>
-            </ScrollView>
-
-            {/* Footer Button */}
-            <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-                <Button
-                    title={isSubmitting ? 'Mengirim...' : 'Kirim Review'}
-                    onPress={handleSubmit}
-                    disabled={isSubmitting || rating === 0}
-                    fullWidth
-                />
-            </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -169,65 +168,76 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
+    scrollContent: {
         padding: Spacing.lg,
     },
-    infoCard: {
+    header: {
+        alignItems: 'center',
         marginBottom: Spacing.xl,
     },
-    therapistInfo: {
+    iconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Spacing.md,
+    },
+    title: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        textAlign: 'center',
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        fontSize: Typography.fontSize.md,
+        textAlign: 'center',
+    },
+    therapistCard: {
+        marginBottom: Spacing.md,
+    },
+    therapistRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: Spacing.md,
     },
     avatar: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
-    },
-    therapistText: {
-        marginLeft: Spacing.md,
+        justifyContent: 'center',
     },
     therapistName: {
-        fontSize: Typography.fontSize.lg,
+        fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
     },
     packageName: {
         fontSize: Typography.fontSize.sm,
         marginTop: 2,
     },
-    ratingSection: {
+    ratingCard: {
+        marginBottom: Spacing.md,
         alignItems: 'center',
-        marginBottom: Spacing.xl,
+        paddingVertical: Spacing.lg,
     },
     sectionTitle: {
-        fontSize: Typography.fontSize.lg,
+        fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
         marginBottom: Spacing.md,
-        textAlign: 'center',
     },
-    starsContainer: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        marginVertical: Spacing.md,
+    commentCard: {
+        marginBottom: Spacing.md,
     },
-    ratingText: {
-        fontSize: Typography.fontSize.md,
-        fontWeight: Typography.fontWeight.medium,
-    },
-    commentSection: {
-        marginBottom: Spacing.lg,
-    },
-    commentInput: {
-        minHeight: 100,
+    textInput: {
         borderWidth: 1,
         borderRadius: BorderRadius.md,
         padding: Spacing.md,
         fontSize: Typography.fontSize.md,
+        minHeight: 120,
     },
     footer: {
-        padding: Spacing.lg,
+        padding: Spacing.md,
         borderTopWidth: 1,
     },
 });

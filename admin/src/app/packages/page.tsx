@@ -13,6 +13,8 @@ type Package = {
     sessionCount: number;
     totalPrice: string;
     commissionRate: string;
+    promoImageUrl: string | null;
+    showOnDashboard: boolean;
     createdAt: string;
     updatedAt: string;
 };
@@ -22,6 +24,8 @@ type FormData = {
     sessionCount: string;
     totalPrice: string;
     commissionRate: string;
+    promoImageUrl: string;
+    showOnDashboard: boolean;
 };
 
 const initialFormData: FormData = {
@@ -29,6 +33,8 @@ const initialFormData: FormData = {
     sessionCount: '1',
     totalPrice: '',
     commissionRate: '30',
+    promoImageUrl: '',
+    showOnDashboard: false,
 };
 
 export default function PackagesPage() {
@@ -57,6 +63,7 @@ export default function PackagesPage() {
                 '/admin/packages',
                 { tokenOverride: adminToken }
             );
+            console.log('[DEBUG] Packages data:', JSON.stringify(data, null, 2));
             setPackages(data);
         } catch (err) {
             setError((err as Error).message);
@@ -84,6 +91,8 @@ export default function PackagesPage() {
             sessionCount: pkg.sessionCount.toString(),
             totalPrice: pkg.totalPrice,
             commissionRate: pkg.commissionRate || '30',
+            promoImageUrl: pkg.promoImageUrl || '',
+            showOnDashboard: pkg.showOnDashboard || false,
         });
         setModalOpen(true);
     };
@@ -94,7 +103,7 @@ export default function PackagesPage() {
         setFormData(initialFormData);
     };
 
-    const handleInputChange = (field: keyof FormData, value: string) => {
+    const handleInputChange = (field: keyof FormData, value: string | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -111,6 +120,8 @@ export default function PackagesPage() {
                 sessionCount: parseInt(formData.sessionCount, 10),
                 totalPrice: formData.totalPrice,
                 commissionRate: formData.commissionRate,
+                promoImageUrl: formData.promoImageUrl.trim() || undefined,
+                showOnDashboard: formData.showOnDashboard,
             };
 
             if (editingId) {
@@ -191,6 +202,7 @@ export default function PackagesPage() {
                                 <th>Jumlah Sesi</th>
                                 <th>Harga</th>
                                 <th>Komisi</th>
+                                <th>Promo</th>
                                 <th>Dibuat</th>
                                 <th>Aksi</th>
                             </tr>
@@ -198,7 +210,7 @@ export default function PackagesPage() {
                         <tbody>
                             {packages.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className={styles.emptyRow}>
+                                    <td colSpan={7} className={styles.emptyRow}>
                                         {loading ? 'Loading...' : 'Belum ada package. Klik "Tambah Package" untuk membuat.'}
                                     </td>
                                 </tr>
@@ -216,6 +228,13 @@ export default function PackagesPage() {
                                             <span className={styles.sessionBadge}>
                                                 {pkg.commissionRate || 30}%
                                             </span>
+                                        </td>
+                                        <td>
+                                            {pkg.showOnDashboard ? (
+                                                <span className="badge" style={{ background: '#10b981', color: 'white' }}>✓ Aktif</span>
+                                            ) : (
+                                                <span className="badge" style={{ background: '#94a3b8', color: 'white' }}>-</span>
+                                            )}
                                         </td>
                                         <td className="text-muted text-sm">
                                             {new Date(pkg.createdAt).toLocaleDateString('id-ID')}
@@ -296,6 +315,93 @@ export default function PackagesPage() {
                             required
                         />
                         <small className="text-muted">Persentase yang diterima platform (sisanya untuk therapist)</small>
+                    </div>
+
+                    <hr style={{ margin: '1rem 0', borderColor: 'var(--color-border)' }} />
+                    <h4 style={{ marginBottom: '1rem', color: 'var(--color-text-secondary)' }}>🎯 Promo Banner (Dashboard Patient)</h4>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor="promoImage">Upload Gambar Promo</label>
+                        <input
+                            id="promoImage"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+
+                                // Validate file size (max 5MB)
+                                if (file.size > 5 * 1024 * 1024) {
+                                    setError('Ukuran file maksimal 5MB');
+                                    return;
+                                }
+
+                                // Upload file
+                                try {
+                                    setError(null);
+                                    const formDataUpload = new FormData();
+                                    formDataUpload.append('image', file);
+
+                                    const response = await fetch(`${API_BASE_URL}/upload/promo`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Authorization': `Bearer ${adminToken}`,
+                                        },
+                                        body: formDataUpload,
+                                    });
+
+                                    if (!response.ok) {
+                                        throw new Error('Upload gagal');
+                                    }
+
+                                    const result = await response.json();
+                                    handleInputChange('promoImageUrl', result.url);
+                                } catch (err) {
+                                    setError('Gagal upload gambar: ' + (err as Error).message);
+                                }
+                            }}
+                            style={{ padding: '0.5rem' }}
+                        />
+                        <small className="text-muted">
+                            Format: JPG, PNG, WebP | Ukuran: max 5MB | Dimensi ideal: <strong>1200 x 675 px</strong> (16:9)
+                        </small>
+
+                        {/* Preview current image */}
+                        {formData.promoImageUrl && (
+                            <div style={{ marginTop: '0.75rem' }}>
+                                <img
+                                    src={formData.promoImageUrl}
+                                    alt="Preview"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '150px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--color-border)'
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => handleInputChange('promoImageUrl', '')}
+                                    style={{ marginLeft: '0.5rem' }}
+                                >
+                                    🗑️ Hapus
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={formData.showOnDashboard}
+                                onChange={(e) => handleInputChange('showOnDashboard', e.target.checked)}
+                                style={{ width: 'auto' }}
+                            />
+                            Tampilkan di Dashboard Patient
+                        </label>
+                        <small className="text-muted">Jika aktif, paket ini akan muncul di carousel promo dashboard patient</small>
                     </div>
 
                     <div className={styles.formActions}>

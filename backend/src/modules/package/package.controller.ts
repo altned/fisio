@@ -9,4 +9,12 @@ export class PackageController {
     list() {
         return this.packageService.list();
     }
+
+    /**
+     * Get promo packages for carousel on patient dashboard
+     */
+    @Get('promos')
+    promos() {
+        return this.packageService.promos();
+    }
 }

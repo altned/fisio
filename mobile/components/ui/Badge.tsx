@@ -8,7 +8,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { BookingStatus, PaymentStatus, SessionStatus } from '@/types';
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info';
+type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary';
 type BadgeSize = 'sm' | 'md';
 
 interface BadgeProps {
@@ -65,6 +65,8 @@ export function Badge({ label, variant = 'default', size = 'sm', style }: BadgeP
                 return { bg: colors.errorLight, text: colors.error };
             case 'info':
                 return { bg: colors.infoLight, text: colors.info };
+            case 'primary':
+                return { bg: colors.primaryLight, text: colors.primary };
             default:
                 return { bg: colors.backgroundSecondary, text: colors.textSecondary };
         }

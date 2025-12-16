@@ -213,6 +213,33 @@ export default function BookingListPage() {
     }
   };
 
+  // Force payment to PAID (for testing)
+  const handleForcePaid = async () => {
+    if (!detail) return;
+    if (!confirm('⚠️ DEV ONLY: Apakah Anda yakin ingin bypass pembayaran untuk booking ini?')) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await apiFetch(
+        API_BASE_URL,
+        `/payment/force-paid/${detail.id}`,
+        {
+          method: 'POST',
+          tokenOverride: adminToken,
+        }
+      );
+      setSuccess('✅ Pembayaran berhasil di-bypass! Booking sekarang PAID.');
+      loadDetail(detail.id);
+      loadList();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Auto-refresh for pending payment
   useEffect(() => {
     if (!detail || !activeId) return;
@@ -394,7 +421,18 @@ export default function BookingListPage() {
           )}
 
           {/* Actions */}
-          <div className="flex gap-md">
+          <div className="flex gap-md flex-wrap">
+            {/* Force Paid button for PENDING payment (DEV ONLY) */}
+            {detail.status === 'PENDING' && detail.paymentStatus === 'PENDING' && (
+              <button
+                className="btn btn-primary"
+                onClick={handleForcePaid}
+                disabled={loading}
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+              >
+                ⚡ Force Paid (DEV)
+              </button>
+            )}
             {/* Only show swap button for ongoing bookings (PENDING or PAID, not COMPLETED/CANCELLED) */}
             {(detail.status === 'PENDING' || detail.status === 'PAID') && (
               <button className="btn btn-secondary" onClick={openSwapModal}>

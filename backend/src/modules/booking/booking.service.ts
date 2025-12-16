@@ -359,7 +359,14 @@ export class BookingService {
       }
     }
 
-    return booking;
+    // Check if review already exists for this booking
+    const reviewRepo = this.dataSource.getRepository('reviews');
+    const reviewCount = await reviewRepo.count({ where: { booking: { id: bookingId } } });
+
+    return {
+      ...booking,
+      hasReviewed: reviewCount > 0,
+    };
   }
 
   /**
