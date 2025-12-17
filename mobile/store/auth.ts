@@ -17,6 +17,7 @@ interface AuthState {
 
     // Actions
     login: (email: string, password: string) => Promise<void>;
+    loginWithGoogle: (idToken: string) => Promise<void>;
     register: (data: { email: string; password: string; fullName: string; role?: UserRole }) => Promise<void>;
     logout: () => Promise<void>;
     setActiveRole: (role: UserRole) => void;
@@ -37,6 +38,28 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true });
                 try {
                     const response = await api.post<AuthResponse>('/auth/login', { email, password }, { skipAuth: true });
+
+                    await api.setToken(response.accessToken);
+
+                    const role = response.user.role || 'PATIENT';
+
+                    set({
+                        user: response.user,
+                        token: response.accessToken,
+                        isLoggedIn: true,
+                        activeRole: role,
+                        isLoading: false,
+                    });
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            loginWithGoogle: async (idToken: string) => {
+                set({ isLoading: true });
+                try {
+                    const response = await api.post<AuthResponse>('/auth/google', { idToken }, { skipAuth: true });
 
                     await api.setToken(response.accessToken);
 

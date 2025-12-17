@@ -107,4 +107,72 @@ export class AuthService {
         // Generate token and return
         return this.login({ email: dto.email, password: dto.password });
     }
+
+    /**
+     * Login/Register dengan Google OAuth.
+     * Jika user belum ada, akan dibuat dengan role PATIENT.
+     */
+    async loginWithGoogle(idToken: string): Promise<{ accessToken: string; user: Partial<User> }> {
+        const { OAuth2Client } = await import('google-auth-library');
+
+        // Verify Google ID token
+        const client = new OAuth2Client();
+        let payload;
+
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (err) {
+            throw new UnauthorizedException('Token Google tidak valid');
+        }
+
+        if (!payload || !payload.email) {
+            throw new UnauthorizedException('Token Google tidak mengandung email');
+        }
+
+        const userRepo = this.dataSource.getRepository(User);
+
+        // Find or create user
+        let user = await userRepo.findOne({ where: { email: payload.email } });
+
+        if (!user) {
+            // Create new user with PATIENT role
+            user = userRepo.create({
+                email: payload.email,
+                fullName: payload.name || payload.email.split('@')[0],
+                passwordHash: null, // Google users don't have password
+                role: 'PATIENT',
+                isProfileComplete: false,
+            });
+            await userRepo.save(user);
+        }
+
+        // Generate JWT token
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            throw new UnauthorizedException('JWT secret belum dikonfigurasi');
+        }
+
+        const jwtPayload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = sign(jwtPayload, secret, { expiresIn: '7d' });
+
+        return {
+            accessToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                role: user.role,
+                isProfileComplete: user.isProfileComplete,
+            },
+        };
+    }
 }

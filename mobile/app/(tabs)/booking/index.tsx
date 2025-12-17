@@ -21,6 +21,7 @@ import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Card, Badge, Button } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 import { Therapist, TherapistBidang } from '@/types';
 
 const BIDANG_OPTIONS: TherapistBidang[] = [
@@ -35,14 +36,23 @@ const BIDANG_OPTIONS: TherapistBidang[] = [
 export default function TherapistSelectionScreen() {
     const colors = Colors.light;
     const router = useRouter();
+    const { user } = useAuthStore();
     const [therapists, setTherapists] = useState<Therapist[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [showFilter, setShowFilter] = useState(false);
+    const [showProfileGuard, setShowProfileGuard] = useState(false);
 
     // Filter state
     const [selectedBidang, setSelectedBidang] = useState<string | null>(null);
     const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
+    // Check profile completeness on mount
+    useEffect(() => {
+        if (user && !user.isProfileComplete) {
+            setShowProfileGuard(true);
+        }
+    }, [user]);
 
     const fetchTherapists = async () => {
         try {
@@ -95,6 +105,11 @@ export default function TherapistSelectionScreen() {
     }, [therapists, selectedBidang, selectedCity]);
 
     const handleSelectTherapist = (therapist: Therapist) => {
+        // Double-check profile is complete before proceeding
+        if (!user?.isProfileComplete) {
+            setShowProfileGuard(true);
+            return;
+        }
         router.push({
             pathname: '/(tabs)/booking/step2-package',
             params: { therapistId: therapist.id, therapistName: therapist.user?.fullName },
@@ -107,6 +122,11 @@ export default function TherapistSelectionScreen() {
     };
 
     const activeFilterCount = (selectedBidang ? 1 : 0) + (selectedCity ? 1 : 0);
+
+    const handleGoToProfile = () => {
+        setShowProfileGuard(false);
+        router.push('/profile-edit');
+    };
 
     const renderItem = ({ item }: { item: Therapist }) => {
         const cityDisplay = item.city || item.address?.split(',').pop()?.trim() || '-';
@@ -346,6 +366,42 @@ export default function TherapistSelectionScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Profile Guard Modal */}
+            <Modal
+                visible={showProfileGuard}
+                animationType="fade"
+                transparent
+                onRequestClose={() => setShowProfileGuard(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.profileGuardContent, { backgroundColor: colors.card }]}>
+                        <View style={[styles.profileGuardIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <Ionicons name="person-circle-outline" size={48} color="#F59E0B" />
+                        </View>
+                        <Text style={[styles.profileGuardTitle, { color: colors.text }]}>
+                            Lengkapi Profil Dulu
+                        </Text>
+                        <Text style={[styles.profileGuardMessage, { color: colors.textSecondary }]}>
+                            Untuk melakukan booking, Anda perlu melengkapi data profil terlebih dahulu (nama, alamat, dll).
+                        </Text>
+                        <View style={styles.profileGuardButtons}>
+                            <TouchableOpacity
+                                style={[styles.profileGuardBtnSecondary, { borderColor: colors.border }]}
+                                onPress={() => setShowProfileGuard(false)}
+                            >
+                                <Text style={{ color: colors.text }}>Nanti Saja</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.profileGuardBtnPrimary, { backgroundColor: colors.primary }]}
+                                onPress={handleGoToProfile}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '600' }}>Lengkapi Profil</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -507,5 +563,50 @@ const styles = StyleSheet.create({
     modalFooter: {
         padding: Spacing.lg,
         borderTopWidth: 1,
+    },
+    // Profile Guard Modal styles
+    profileGuardContent: {
+        width: '85%',
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.xl,
+        alignItems: 'center',
+    },
+    profileGuardIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Spacing.md,
+    },
+    profileGuardTitle: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        marginBottom: Spacing.sm,
+        textAlign: 'center',
+    },
+    profileGuardMessage: {
+        fontSize: Typography.fontSize.md,
+        textAlign: 'center',
+        marginBottom: Spacing.lg,
+        lineHeight: 22,
+    },
+    profileGuardButtons: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        width: '100%',
+    },
+    profileGuardBtnSecondary: {
+        flex: 1,
+        paddingVertical: Spacing.md,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        alignItems: 'center',
+    },
+    profileGuardBtnPrimary: {
+        flex: 1,
+        paddingVertical: Spacing.md,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
     },
 });
