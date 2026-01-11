@@ -21,7 +21,7 @@ export class SessionService {
     @InjectQueue('payout') private readonly payoutQueue: Queue,
   ) { }
 
-  async completeSession(sessionId: string, notes: string): Promise<Session> {
+  async completeSession(sessionId: string, notes: string, photoUrl?: string): Promise<Session> {
     if (!notes?.trim()) {
       throw new BadRequestException('Catatan sesi wajib diisi');
     }
@@ -40,6 +40,9 @@ export class SessionService {
 
       session.status = 'COMPLETED';
       session.therapistNotes = notes.trim();
+      if (photoUrl) {
+        session.completionPhotoUrl = photoUrl;
+      }
       await sessionRepo.save(session);
 
       await this.updateChatLockIfFinished(bookingRepo, session.booking.id);
@@ -48,7 +51,11 @@ export class SessionService {
     });
   }
 
-  async cancelSession(sessionId: string): Promise<Session> {
+  async cancelSession(
+    sessionId: string,
+    reason?: string,
+    cancelledBy: 'PATIENT' | 'THERAPIST' | 'SYSTEM' = 'PATIENT',
+  ): Promise<Session> {
     return this.dataSource.transaction(async (manager) => {
       const sessionRepo = manager.getRepository(Session);
       const bookingRepo = manager.getRepository(Booking);
@@ -66,6 +73,12 @@ export class SessionService {
 
       const now = new Date();
       const diff = session.scheduledAt.getTime() - now.getTime();
+
+      // Set cancellation tracking
+      session.cancellationReason = reason || null;
+      session.cancelledAt = now;
+      session.cancelledBy = cancelledBy;
+
       if (diff > ONE_HOUR_MS) {
         // Aman: kembalikan kuota, jadwal dihapus
         session.status = 'PENDING_SCHEDULING';
@@ -186,15 +199,16 @@ export class SessionService {
     scheduledAt: Date,
   ) {
     const { start, end } = this.slotService.slotWindow(scheduledAt);
+    // Use getMany() instead of getCount() because PostgreSQL doesn't allow FOR UPDATE with aggregate functions
     const overlapping = await sessionRepo
       .createQueryBuilder('session')
       .setLock('pessimistic_write')
       .where('session.therapist_id = :therapistId', { therapistId })
       .andWhere('session.status IN (:...statuses)', { statuses: SCHEDULABLE_STATUSES })
       .andWhere('session.scheduled_at BETWEEN :start AND :end', { start, end })
-      .getCount();
+      .getMany();
 
-    if (overlapping > 0) {
+    if (overlapping.length > 0) {
       throw new BadRequestException('Slot tidak tersedia (double booking)');
     }
   }
@@ -222,6 +236,63 @@ export class SessionService {
     return sessions
       .filter(s => s.scheduledAt)
       .map(s => s.scheduledAt.toISOString());
+  }
+
+  /**
+   * Swap therapist for a pending session
+   * Only allowed for PENDING_SCHEDULING sessions
+   */
+  async swapTherapist(
+    sessionId: string,
+    newTherapistId: string,
+    actor?: { id?: string; role?: UserRole },
+  ): Promise<Session> {
+    return this.dataSource.transaction(async (manager) => {
+      const sessionRepo = manager.getRepository(Session);
+      const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['booking', 'booking.user', 'booking.therapist', 'therapist'],
+      });
+
+      if (!session) {
+        throw new BadRequestException('Session tidak ditemukan');
+      }
+
+      if (session.status !== 'PENDING_SCHEDULING') {
+        throw new BadRequestException('Hanya sesi dengan status PENDING_SCHEDULING yang dapat diganti terapisnya');
+      }
+
+      // Verify actor is the patient who owns this booking
+      if (actor?.role === 'PATIENT' && actor.id && session.booking.user.id !== actor.id) {
+        throw new ForbiddenException('Tidak boleh mengganti terapis untuk booking milik pengguna lain');
+      }
+
+      // Load the new therapist
+      const therapistRepo = manager.getRepository('Therapist');
+      const newTherapist = await therapistRepo.findOne({
+        where: { id: newTherapistId },
+        relations: ['user'],
+      });
+
+      if (!newTherapist) {
+        throw new BadRequestException('Terapis baru tidak ditemukan');
+      }
+
+      // Update session therapist
+      session.therapist = newTherapist as any;
+
+      // Also update the booking's therapist for future sessions
+      const bookingRepo = manager.getRepository(Booking);
+      const booking = await bookingRepo.findOne({
+        where: { id: session.booking.id },
+      });
+      if (booking) {
+        booking.therapist = newTherapist as any;
+        await bookingRepo.save(booking);
+      }
+
+      return sessionRepo.save(session);
+    });
   }
 }
 

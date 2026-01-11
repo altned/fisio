@@ -1,5 +1,6 @@
 /**
  * Step 1: Therapist Selection with Filter
+ * Enhanced UI with premium card design and more informative therapist data
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -13,6 +14,8 @@ import {
     TouchableOpacity,
     Modal,
     ScrollView,
+    Image,
+    ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -130,68 +133,118 @@ export default function TherapistSelectionScreen() {
 
     const renderItem = ({ item }: { item: Therapist }) => {
         const cityDisplay = item.city || item.address?.split(',').pop()?.trim() || '-';
+        const hasPhoto = item.photoUrl && item.photoUrl.length > 0;
+        const bioPreview = item.bio ? (item.bio.length > 80 ? item.bio.substring(0, 80) + '...' : item.bio) : null;
 
         return (
             <TouchableOpacity
                 onPress={() => handleSelectTherapist(item)}
-                activeOpacity={0.7}
+                activeOpacity={0.85}
+                style={styles.therapistCardWrapper}
             >
-                <Card style={styles.card} shadow>
-                    <View style={styles.cardContent}>
-                        <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-                            <Ionicons name="person" size={32} color={colors.primary} />
+                <View style={[styles.therapistCard, { backgroundColor: colors.card }]}>
+                    {/* Top Section with Photo and Basic Info */}
+                    <View style={styles.cardTopSection}>
+                        {/* Photo/Avatar */}
+                        <View style={styles.photoContainer}>
+                            {hasPhoto ? (
+                                <Image
+                                    source={{ uri: item.photoUrl! }}
+                                    style={styles.therapistPhoto}
+                                />
+                            ) : (
+                                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primaryLight }]}>
+                                    <Ionicons name="person" size={36} color={colors.primary} />
+                                </View>
+                            )}
+                            {/* Verified Badge */}
+                            {item.strNumber && (
+                                <View style={[styles.verifiedBadge, { backgroundColor: '#10B981' }]}>
+                                    <Ionicons name="checkmark" size={10} color="#fff" />
+                                </View>
+                            )}
                         </View>
-                        <View style={styles.info}>
-                            <Text style={[styles.name, { color: colors.text }]}>
+
+                        {/* Basic Info */}
+                        <View style={styles.basicInfo}>
+                            <Text style={[styles.therapistName, { color: colors.text }]} numberOfLines={1}>
                                 {item.user?.fullName || 'Fisioterapis'}
                             </Text>
 
-                            {/* Bidang/Specialty */}
+                            {/* Specialty Badge */}
                             {item.bidang && (
-                                <View style={styles.tagRow}>
-                                    <Badge
-                                        label={item.bidang}
-                                        variant="primary"
-                                        size="sm"
-                                    />
+                                <View style={[styles.specialtyBadge, { backgroundColor: colors.primaryLight }]}>
+                                    <Ionicons name="medical" size={12} color={colors.primary} />
+                                    <Text style={[styles.specialtyText, { color: colors.primary }]}>
+                                        {item.bidang.replace('Fisioterapi ', '')}
+                                    </Text>
                                 </View>
                             )}
 
-                            {/* City Location */}
-                            <View style={styles.locationRow}>
-                                <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                                <Text style={[styles.location, { color: colors.textSecondary }]}>
-                                    {cityDisplay}
-                                </Text>
-                            </View>
-
-                            {/* Rating */}
-                            <View style={styles.ratingContainer}>
-                                <Ionicons name="star" size={14} color="#FFC107" />
-                                <Text style={[styles.rating, { color: colors.textSecondary }]}>
-                                    {item.averageRating} ({item.totalReviews} ulasan)
-                                </Text>
-                                {Number(item.experienceYears) > 0 && (
-                                    <Text style={[styles.experience, { color: colors.textMuted }]}>
-                                        • {item.experienceYears} thn
+                            {/* Rating and Experience Row */}
+                            <View style={styles.statsRow}>
+                                <View style={styles.statItem}>
+                                    <Ionicons name="star" size={14} color="#F59E0B" />
+                                    <Text style={[styles.statText, { color: colors.text }]}>
+                                        {item.averageRating || '0.0'}
                                     </Text>
-                                )}
+                                    <Text style={[styles.statSubtext, { color: colors.textMuted }]}>
+                                        ({item.totalReviews || 0})
+                                    </Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Ionicons name="time-outline" size={14} color={colors.primary} />
+                                    <Text style={[styles.statText, { color: colors.text }]}>
+                                        {item.experienceYears || 0} tahun
+                                    </Text>
+                                </View>
                             </View>
                         </View>
-                        <Ionicons name="chevron-forward" size={24} color={colors.primary} />
                     </View>
-                </Card>
+
+                    {/* Bio Preview */}
+                    {bioPreview && (
+                        <View style={styles.bioSection}>
+                            <Text style={[styles.bioText, { color: colors.textSecondary }]} numberOfLines={2}>
+                                "{bioPreview}"
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Bottom Section with Location and Action */}
+                    <View style={[styles.cardBottomSection, { borderTopColor: colors.border }]}>
+                        <View style={styles.locationInfo}>
+                            <Ionicons name="location" size={16} color={colors.primary} />
+                            <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>
+                                {cityDisplay}
+                            </Text>
+                        </View>
+                        <View style={[styles.selectButton, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.selectButtonText}>Pilih</Text>
+                            <Ionicons name="arrow-forward" size={14} color="#fff" />
+                        </View>
+                    </View>
+                </View>
             </TouchableOpacity>
         );
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.text }]}>Pilih Terapis</Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                    Tersedia {filteredTherapists.length} fisioterapis profesional
-                </Text>
+            {/* Enhanced Header */}
+            <View style={[styles.header, { backgroundColor: colors.primary }]}>
+                <View style={styles.headerContent}>
+                    <View style={styles.headerIconContainer}>
+                        <Ionicons name="medical" size={24} color="#fff" />
+                    </View>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitle}>Pilih Terapis</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {filteredTherapists.length} fisioterapis profesional tersedia
+                        </Text>
+                    </View>
+                </View>
             </View>
 
             {/* Filter Button */}
@@ -374,7 +427,7 @@ export default function TherapistSelectionScreen() {
                 transparent
                 onRequestClose={() => setShowProfileGuard(false)}
             >
-                <View style={styles.modalOverlay}>
+                <View style={styles.profileGuardOverlay}>
                     <View style={[styles.profileGuardContent, { backgroundColor: colors.card }]}>
                         <View style={[styles.profileGuardIcon, { backgroundColor: '#FEF3C7' }]}>
                             <Ionicons name="person-circle-outline" size={48} color="#F59E0B" />
@@ -456,9 +509,167 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: Spacing.lg,
-        paddingTop: 0,
+        paddingTop: Spacing.md,
+        gap: Spacing.lg,
+    },
+    // Enhanced Header Styles
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: Spacing.md,
     },
+    headerIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerTitle: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    headerSubtitle: {
+        fontSize: Typography.fontSize.sm,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 2,
+    },
+    // Premium Therapist Card Styles
+    therapistCardWrapper: {
+        marginBottom: 0,
+    },
+    therapistCard: {
+        borderRadius: BorderRadius.lg,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    cardTopSection: {
+        flexDirection: 'row',
+        padding: Spacing.md,
+        gap: Spacing.md,
+    },
+    photoContainer: {
+        position: 'relative',
+    },
+    therapistPhoto: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+    },
+    avatarPlaceholder: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    verifiedBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    basicInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    therapistName: {
+        fontSize: Typography.fontSize.lg,
+        fontWeight: Typography.fontWeight.bold,
+        marginBottom: 4,
+    },
+    specialtyBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+        borderRadius: BorderRadius.full,
+        gap: 4,
+        marginBottom: 8,
+    },
+    specialtyText: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.medium,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    statText: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium,
+    },
+    statSubtext: {
+        fontSize: Typography.fontSize.xs,
+    },
+    statDivider: {
+        width: 1,
+        height: 12,
+        backgroundColor: '#E5E7EB',
+    },
+    bioSection: {
+        paddingHorizontal: Spacing.md,
+        paddingBottom: Spacing.sm,
+    },
+    bioText: {
+        fontSize: Typography.fontSize.sm,
+        fontStyle: 'italic',
+        lineHeight: 18,
+    },
+    cardBottomSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderTopWidth: 1,
+    },
+    locationInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 4,
+    },
+    locationText: {
+        fontSize: Typography.fontSize.sm,
+        flex: 1,
+    },
+    selectButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.full,
+        gap: 4,
+    },
+    selectButtonText: {
+        color: '#fff',
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    // Legacy styles kept for compatibility
     card: {
         padding: Spacing.md,
     },
@@ -565,6 +776,12 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
     },
     // Profile Guard Modal styles
+    profileGuardOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     profileGuardContent: {
         width: '85%',
         borderRadius: BorderRadius.lg,

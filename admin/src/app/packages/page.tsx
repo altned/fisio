@@ -15,6 +15,7 @@ type Package = {
     commissionRate: string;
     promoImageUrl: string | null;
     showOnDashboard: boolean;
+    isActive: boolean;
     createdAt: string;
     updatedAt: string;
 };
@@ -163,6 +164,21 @@ export default function PackagesPage() {
         }
     };
 
+    const handleToggleActive = async (id: string, currentStatus: boolean) => {
+        if (!adminToken) return;
+
+        try {
+            await apiFetch(
+                API_BASE_URL,
+                `/admin/packages/${id}/toggle-active`,
+                { method: 'PATCH', tokenOverride: adminToken }
+            );
+            loadPackages();
+        } catch (err) {
+            setError((err as Error).message);
+        }
+    };
+
     const formatPrice = (price: string) => {
         const num = parseFloat(price);
         return new Intl.NumberFormat('id-ID', {
@@ -202,6 +218,7 @@ export default function PackagesPage() {
                                 <th>Jumlah Sesi</th>
                                 <th>Harga</th>
                                 <th>Komisi</th>
+                                <th>Status</th>
                                 <th>Promo</th>
                                 <th>Dibuat</th>
                                 <th>Aksi</th>
@@ -210,7 +227,7 @@ export default function PackagesPage() {
                         <tbody>
                             {packages.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className={styles.emptyRow}>
+                                    <td colSpan={8} className={styles.emptyRow}>
                                         {loading ? 'Loading...' : 'Belum ada package. Klik "Tambah Package" untuk membuat.'}
                                     </td>
                                 </tr>
@@ -230,8 +247,15 @@ export default function PackagesPage() {
                                             </span>
                                         </td>
                                         <td>
-                                            {pkg.showOnDashboard ? (
+                                            {pkg.isActive !== false ? (
                                                 <span className="badge" style={{ background: '#10b981', color: 'white' }}>✓ Aktif</span>
+                                            ) : (
+                                                <span className="badge" style={{ background: '#ef4444', color: 'white' }}>✗ Nonaktif</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {pkg.showOnDashboard ? (
+                                                <span className="badge" style={{ background: '#3b82f6', color: 'white' }}>✓ Promo</span>
                                             ) : (
                                                 <span className="badge" style={{ background: '#94a3b8', color: 'white' }}>-</span>
                                             )}
@@ -240,6 +264,13 @@ export default function PackagesPage() {
                                             {new Date(pkg.createdAt).toLocaleDateString('id-ID')}
                                         </td>
                                         <td className={styles.tableActions}>
+                                            <button
+                                                className={`btn btn-sm ${pkg.isActive !== false ? 'btn-ghost' : 'btn-success'}`}
+                                                onClick={() => handleToggleActive(pkg.id, pkg.isActive !== false)}
+                                                title={pkg.isActive !== false ? 'Nonaktifkan package' : 'Aktifkan package'}
+                                            >
+                                                {pkg.isActive !== false ? '🔒 Nonaktifkan' : '🔓 Aktifkan'}
+                                            </button>
                                             <button
                                                 className="btn btn-secondary btn-sm"
                                                 onClick={() => openEditModal(pkg)}

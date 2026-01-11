@@ -30,7 +30,11 @@ export default function SuccessScreen() {
     };
 
     const handleViewBooking = () => {
-        router.replace('/(tabs)/bookings');
+        // Navigate to specific booking detail instead of bookings list
+        router.replace({
+            pathname: '/(tabs)/booking-detail',
+            params: { bookingId: params.bookingId },
+        });
     };
 
     return (
@@ -119,6 +123,7 @@ const styles = StyleSheet.create({
         padding: Spacing.xl,
         alignItems: 'center',
         paddingTop: Spacing.xl * 2,
+        paddingBottom: 180, // Space for fixed footer buttons
     },
     iconContainer: {
         width: 120,
@@ -168,6 +173,7 @@ const styles = StyleSheet.create({
         width: '100%',
         padding: Spacing.lg,
         backgroundColor: '#E3F2FD',
+        marginBottom: Spacing.lg,
     },
     infoHeader: {
         flexDirection: 'row',

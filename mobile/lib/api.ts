@@ -138,6 +138,48 @@ class ApiClient {
         return this.request<T>(endpoint, { ...options, method: 'DELETE' });
     }
 
+    /**
+     * Upload file using FormData (for image uploads)
+     */
+    async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+        const url = `${this.baseUrl}${endpoint}`;
+
+        const requestHeaders: Record<string, string> = {};
+
+        // Don't set Content-Type for FormData - let fetch set it with boundary
+        if (this.token) {
+            requestHeaders['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: requestHeaders,
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw {
+                    message: data.message || 'Upload gagal',
+                    statusCode: response.status,
+                };
+            }
+
+            return data as T;
+        } catch (error) {
+            if ((error as ApiError).statusCode) {
+                throw error;
+            }
+
+            throw {
+                message: 'Gagal mengunggah file',
+                statusCode: 0,
+            } as ApiError;
+        }
+    }
+
     // =========================================
     // Therapist-specific API methods
     // =========================================

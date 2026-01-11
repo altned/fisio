@@ -1,5 +1,5 @@
 /**
- * Session Complete Screen - Therapist adds notes when completing a session
+ * Session Complete Screen - Therapist adds notes and photo when completing a session
  */
 
 import React, { useState } from 'react';
@@ -10,6 +10,8 @@ import {
     TextInput,
     Alert,
     ScrollView,
+    TouchableOpacity,
+    Image,
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +20,7 @@ import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Card } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import api from '@/lib/api';
 
 export default function SessionCompleteScreen() {
@@ -31,7 +34,63 @@ export default function SessionCompleteScreen() {
     }>();
 
     const [notes, setNotes] = useState('');
+    const [photoUri, setPhotoUri] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const takePhoto = async () => {
+        // Request camera permission
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Izin Kamera', 'Izin menggunakan kamera diperlukan untuk mengambil foto.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: 'images',
+            allowsEditing: true,
+            quality: 0.7,
+            aspect: [4, 3],
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setPhotoUri(result.assets[0].uri);
+        }
+    };
+
+    const removePhoto = () => {
+        Alert.alert(
+            'Hapus Foto',
+            'Apakah Anda yakin ingin menghapus foto?',
+            [
+                { text: 'Batal', style: 'cancel' },
+                { text: 'Hapus', style: 'destructive', onPress: () => setPhotoUri(null) },
+            ]
+        );
+    };
+
+    const uploadPhoto = async (): Promise<string | null> => {
+        if (!photoUri) return null;
+
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            const filename = photoUri.split('/').pop() || 'photo.jpg';
+            formData.append('file', {
+                uri: photoUri,
+                type: 'image/jpeg',
+                name: filename,
+            } as any);
+
+            const response = await api.upload<{ url?: string; relativePath?: string }>('/upload/promo', formData);
+            return response.url || response.relativePath || null;
+        } catch (error) {
+            console.error('Photo upload failed:', error);
+            return null;
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSubmit = async () => {
         if (!notes.trim()) {
@@ -41,7 +100,18 @@ export default function SessionCompleteScreen() {
 
         try {
             setIsSubmitting(true);
-            await api.post(`/sessions/${params.sessionId}/complete`, { notes: notes.trim() });
+
+            // Upload photo first if exists
+            let photoUrl: string | null = null;
+            if (photoUri) {
+                photoUrl = await uploadPhoto();
+            }
+
+            await api.post(`/sessions/${params.sessionId}/complete`, {
+                notes: notes.trim(),
+                photoUrl: photoUrl || undefined,
+            });
+
             Alert.alert(
                 'Sesi Selesai',
                 'Sesi berhasil diselesaikan dan catatan telah disimpan.',
@@ -55,7 +125,7 @@ export default function SessionCompleteScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <Stack.Screen options={{ title: 'Selesaikan Sesi' }} />
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -76,6 +146,38 @@ export default function SessionCompleteScreen() {
                         </View>
                     </View>
                 </Card>
+
+                {/* Photo Documentation */}
+                <View style={styles.photoSection}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                        Dokumentasi Foto
+                    </Text>
+                    <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
+                        Ambil foto di lokasi sebagai bukti sesi (opsional)
+                    </Text>
+
+                    {photoUri ? (
+                        <View style={styles.photoPreview}>
+                            <Image source={{ uri: photoUri }} style={styles.photoImage} />
+                            <TouchableOpacity
+                                style={[styles.removePhotoBtn, { backgroundColor: colors.error }]}
+                                onPress={removePhoto}
+                            >
+                                <Ionicons name="close" size={20} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={[styles.takePhotoBtn, { borderColor: colors.primary }]}
+                            onPress={takePhoto}
+                        >
+                            <Ionicons name="camera" size={32} color={colors.primary} />
+                            <Text style={[styles.takePhotoText, { color: colors.primary }]}>
+                                Ambil Foto
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
                 {/* Notes Input */}
                 <View style={styles.notesSection}>
@@ -111,7 +213,7 @@ export default function SessionCompleteScreen() {
                 <View style={[styles.warning, { backgroundColor: '#FFF3E0' }]}>
                     <Ionicons name="information-circle" size={20} color="#F57C00" />
                     <Text style={[styles.warningText, { color: '#E65100' }]}>
-                        Setelah menyelesaikan sesi, catatan tidak dapat diubah.
+                        Setelah menyelesaikan sesi, catatan dan foto tidak dapat diubah.
                     </Text>
                 </View>
             </ScrollView>
@@ -119,9 +221,9 @@ export default function SessionCompleteScreen() {
             {/* Footer Button */}
             <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
                 <Button
-                    title={isSubmitting ? 'Memproses...' : 'Selesaikan Sesi'}
+                    title={isSubmitting || isUploading ? 'Memproses...' : 'Selesaikan Sesi'}
                     onPress={handleSubmit}
-                    disabled={isSubmitting || !notes.trim()}
+                    disabled={isSubmitting || isUploading || !notes.trim()}
                     fullWidth
                 />
             </View>
@@ -154,7 +256,7 @@ const styles = StyleSheet.create({
         fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
     },
-    notesSection: {
+    photoSection: {
         marginBottom: Spacing.lg,
     },
     sectionTitle: {
@@ -165,6 +267,42 @@ const styles = StyleSheet.create({
     sectionHint: {
         fontSize: Typography.fontSize.sm,
         marginBottom: Spacing.md,
+    },
+    takePhotoBtn: {
+        height: 120,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    takePhotoText: {
+        marginTop: Spacing.sm,
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.medium,
+    },
+    photoPreview: {
+        position: 'relative',
+        borderRadius: BorderRadius.md,
+        overflow: 'hidden',
+    },
+    photoImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: BorderRadius.md,
+    },
+    removePhotoBtn: {
+        position: 'absolute',
+        top: Spacing.sm,
+        right: Spacing.sm,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    notesSection: {
+        marginBottom: Spacing.lg,
     },
     notesInput: {
         minHeight: 150,

@@ -80,7 +80,7 @@ function RootLayoutNav() {
     const inOnboarding = segments[0] === 'onboarding';
     const inTabs = segments[0] === '(tabs)';
     // Protected routes that logged-in users can access outside of tabs
-    const inProtectedRoute = ['chat', 'session-complete', 'review'].includes(segments[0] as string);
+    const inProtectedRoute = ['chat', 'session-complete', 'review', 'profile-edit', 'notification-settings'].includes(segments[0] as string);
 
     // First-time users go to onboarding
     if (!hasCompletedOnboarding && !inOnboarding) {
@@ -142,6 +142,8 @@ function RootLayoutNav() {
         <Stack.Screen name="chat/[bookingId]" />
         <Stack.Screen name="session-complete" />
         <Stack.Screen name="review" />
+        <Stack.Screen name="profile-edit" />
+        <Stack.Screen name="notification-settings" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

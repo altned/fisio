@@ -136,6 +136,8 @@ export default function ConsentScreen() {
         totalPrice: string;
         sessionCount: string;
         address: string;
+        latitude: string;
+        longitude: string;
         scheduledAt: string;
         bookingType: string;
     }>();
@@ -179,6 +181,8 @@ export default function ConsentScreen() {
                 therapistId: params.therapistId,
                 packageId: params.packageId,
                 address: params.address,
+                latitude: params.latitude ? parseFloat(params.latitude) : null,
+                longitude: params.longitude ? parseFloat(params.longitude) : null,
                 scheduledAt: params.scheduledAt,
                 bookingType: params.bookingType,
                 // Consent fields

@@ -1,9 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
 @Injectable()
 export class JobService implements OnModuleInit {
+  private readonly logger = new Logger(JobService.name);
+
   constructor(
     @InjectQueue('booking-expiry') private readonly expiryQueue: Queue,
     @InjectQueue('chat-lock') private readonly chatLockQueue: Queue,
@@ -13,16 +15,37 @@ export class JobService implements OnModuleInit {
   ) { }
 
   async onModuleInit() {
-    await this.ensureRepeatableJobs();
+    try {
+      await this.ensureRepeatableJobs();
+      this.logger.log('Repeatable jobs initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize repeatable jobs:', error);
+    }
+  }
+
+  /**
+   * Clear all existing repeatable jobs from a queue
+   */
+  private async clearRepeatableJobs(queue: Queue): Promise<void> {
+    try {
+      const repeatableJobs = await queue.getRepeatableJobs();
+      for (const job of repeatableJobs) {
+        await queue.removeRepeatableByKey(job.key);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to clear repeatable jobs for queue ${queue.name}:`, error);
+    }
   }
 
   private async ensureRepeatableJobs() {
-    await this.expiryQueue.removeRepeatableByKey('*');
-    await this.chatLockQueue.removeRepeatableByKey('*');
-    await this.timeoutQueue.removeRepeatableByKey('*');
-    await this.paymentExpiryQueue.removeRepeatableByKey('*');
-    await this.bookingCompleteQueue.removeRepeatableByKey('*');
+    // Clear all existing repeatable jobs first
+    await this.clearRepeatableJobs(this.expiryQueue);
+    await this.clearRepeatableJobs(this.chatLockQueue);
+    await this.clearRepeatableJobs(this.timeoutQueue);
+    await this.clearRepeatableJobs(this.paymentExpiryQueue);
+    await this.clearRepeatableJobs(this.bookingCompleteQueue);
 
+    // Add fresh repeatable jobs
     await this.expiryQueue.add(
       'run',
       {},
@@ -55,4 +78,3 @@ export class JobService implements OnModuleInit {
     );
   }
 }
-

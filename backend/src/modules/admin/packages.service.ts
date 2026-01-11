@@ -94,6 +94,18 @@ export class PackagesService {
 
     async remove(id: string): Promise<{ success: boolean }> {
         const pkg = await this.findOne(id);
+
+        // Check if package is used by any bookings
+        const bookingRepo = this.dataSource.getRepository('Booking');
+        const bookingCount = await bookingRepo.count({ where: { package: { id } } });
+
+        if (bookingCount > 0) {
+            throw new BadRequestException(
+                `Tidak dapat menghapus package ini karena sudah digunakan oleh ${bookingCount} booking. ` +
+                'Pertimbangkan untuk membuat package baru atau menonaktifkan package ini.'
+            );
+        }
+
         await this.dataSource.getRepository(Package).remove(pkg);
         return { success: true };
     }
@@ -115,5 +127,15 @@ export class PackagesService {
                 throw new BadRequestException('Commission rate harus antara 0-100');
             }
         }
+    }
+
+    async toggleActive(id: string): Promise<Package> {
+        const repo = this.dataSource.getRepository(Package);
+        const pkg = await this.findOne(id);
+
+        // Toggle the isActive status
+        pkg.isActive = !pkg.isActive;
+
+        return repo.save(pkg);
     }
 }

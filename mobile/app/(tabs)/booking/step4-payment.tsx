@@ -13,6 +13,7 @@ import {
     ActivityIndicator,
     Clipboard,
     Linking,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -23,22 +24,91 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
 import { PaymentInitiateResult, Booking, PaymentChannel, PaymentStatus } from '@/types';
 
-// Payment channel configuration with color-coded labels
+// Local payment logos
+const PAYMENT_LOGOS = {
+    BCA: require('@/assets/images/payment/bca.png'),
+    BNI: require('@/assets/images/payment/bni.png'),
+    BRI: require('@/assets/images/payment/bri.png'),
+    MANDIRI: require('@/assets/images/payment/mandiri.png'),
+    PERMATA: require('@/assets/images/payment/permata.png'),
+    QRIS: require('@/assets/images/payment/qris.png'),
+    GOPAY: require('@/assets/images/payment/gopay.png'),
+    SHOPEEPAY: require('@/assets/images/payment/shopeepay.png'),
+};
+
+// Payment channel configuration with local logo assets
 const PAYMENT_CHANNELS: {
     id: PaymentChannel;
     label: string;
     shortName: string;
     color: string;
+    logo: any;
     type: 'va' | 'qr' | 'ewallet'
 }[] = [
-        { id: 'VA_BCA', label: 'BCA Virtual Account', shortName: 'BCA', color: '#003D79', type: 'va' },
-        { id: 'VA_BNI', label: 'BNI Virtual Account', shortName: 'BNI', color: '#F15A22', type: 'va' },
-        { id: 'VA_BRI', label: 'BRI Virtual Account', shortName: 'BRI', color: '#00529C', type: 'va' },
-        { id: 'VA_MANDIRI', label: 'Mandiri Virtual Account', shortName: 'MDR', color: '#003366', type: 'va' },
-        { id: 'VA_PERMATA', label: 'Permata Virtual Account', shortName: 'PMT', color: '#6B2D5B', type: 'va' },
-        { id: 'QRIS', label: 'QRIS (Semua E-Wallet)', shortName: 'QRIS', color: '#E31837', type: 'qr' },
-        { id: 'GOPAY', label: 'GoPay', shortName: 'GPay', color: '#00AED6', type: 'ewallet' },
-        { id: 'SHOPEEPAY', label: 'ShopeePay', shortName: 'SPay', color: '#EE4D2D', type: 'ewallet' },
+        {
+            id: 'VA_BCA',
+            label: 'BCA Virtual Account',
+            shortName: 'BCA',
+            color: '#003D79',
+            logo: PAYMENT_LOGOS.BCA,
+            type: 'va'
+        },
+        {
+            id: 'VA_BNI',
+            label: 'BNI Virtual Account',
+            shortName: 'BNI',
+            color: '#F15A22',
+            logo: PAYMENT_LOGOS.BNI,
+            type: 'va'
+        },
+        {
+            id: 'VA_BRI',
+            label: 'BRI Virtual Account',
+            shortName: 'BRI',
+            color: '#00529C',
+            logo: PAYMENT_LOGOS.BRI,
+            type: 'va'
+        },
+        {
+            id: 'VA_MANDIRI',
+            label: 'Mandiri Virtual Account',
+            shortName: 'MDR',
+            color: '#003366',
+            logo: PAYMENT_LOGOS.MANDIRI,
+            type: 'va'
+        },
+        {
+            id: 'VA_PERMATA',
+            label: 'Permata Virtual Account',
+            shortName: 'PMT',
+            color: '#6B2D5B',
+            logo: PAYMENT_LOGOS.PERMATA,
+            type: 'va'
+        },
+        {
+            id: 'QRIS',
+            label: 'QRIS (Semua E-Wallet)',
+            shortName: 'QRIS',
+            color: '#E31837',
+            logo: PAYMENT_LOGOS.QRIS,
+            type: 'qr'
+        },
+        {
+            id: 'GOPAY',
+            label: 'GoPay',
+            shortName: 'GPay',
+            color: '#00AED6',
+            logo: PAYMENT_LOGOS.GOPAY,
+            type: 'ewallet'
+        },
+        {
+            id: 'SHOPEEPAY',
+            label: 'ShopeePay',
+            shortName: 'SPay',
+            color: '#EE4D2D',
+            logo: PAYMENT_LOGOS.SHOPEEPAY,
+            type: 'ewallet'
+        },
     ];
 
 // Map frontend channel to backend channel format
@@ -377,17 +447,43 @@ export default function PaymentScreen() {
                     ),
                 }}
             />
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: colors.text }]}>Pembayaran</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        {params.packageName} • {params.therapistName}
-                    </Text>
-                    <Text style={[styles.amount, { color: colors.primary }]}>
-                        {formatPrice(params.totalPrice)}
-                    </Text>
+
+            {/* Enhanced Header */}
+            <View style={[styles.enhancedHeader, { backgroundColor: colors.primary }]}>
+                <View style={styles.headerContent}>
+                    <View style={styles.headerIconContainer}>
+                        <Ionicons name="card-outline" size={24} color="#fff" />
+                    </View>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitleText}>Pembayaran</Text>
+                        <Text style={styles.headerSubtitleText}>
+                            {params.packageName} • {params.therapistName}
+                        </Text>
+                    </View>
                 </View>
+                <Text style={styles.headerAmount}>{formatPrice(params.totalPrice)}</Text>
+            </View>
+
+            {/* Progress Indicator */}
+            <View style={styles.progressContainer}>
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressActive, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.progressNumber}>4</Text>
+                </View>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.scrollContent}>
 
                 {/* Payment result or channel selection */}
                 {paymentResult ? (
@@ -436,8 +532,12 @@ export default function PaymentScreen() {
                                 ]}
                                 onPress={() => setSelectedChannel(channel.id)}
                             >
-                                <View style={[styles.channelBadge, { backgroundColor: channel.color }]}>
-                                    <Text style={styles.channelBadgeText}>{channel.shortName}</Text>
+                                <View style={styles.channelLogoContainer}>
+                                    <Image
+                                        source={channel.logo}
+                                        style={styles.channelLogo}
+                                        resizeMode="contain"
+                                    />
                                 </View>
                                 <Text style={[styles.channelLabel, { color: colors.text }]}>{channel.label}</Text>
                                 {selectedChannel === channel.id && (
@@ -460,8 +560,12 @@ export default function PaymentScreen() {
                                 ]}
                                 onPress={() => setSelectedChannel(channel.id)}
                             >
-                                <View style={[styles.channelBadge, { backgroundColor: channel.color }]}>
-                                    <Text style={styles.channelBadgeText}>{channel.shortName}</Text>
+                                <View style={styles.channelLogoContainer}>
+                                    <Image
+                                        source={channel.logo}
+                                        style={styles.channelLogo}
+                                        resizeMode="contain"
+                                    />
                                 </View>
                                 <Text style={[styles.channelLabel, { color: colors.text }]}>{channel.label}</Text>
                                 {selectedChannel === channel.id && (
@@ -491,6 +595,78 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    // Enhanced Header styles
+    enhancedHeader: {
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.lg,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    headerIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerTitleText: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    headerSubtitleText: {
+        fontSize: Typography.fontSize.sm,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 2,
+    },
+    headerAmount: {
+        fontSize: Typography.fontSize['2xl'],
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+        textAlign: 'center',
+        marginTop: Spacing.sm,
+    },
+    // Progress indicator styles
+    progressContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.md,
+    },
+    progressStep: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    progressDone: {
+        backgroundColor: '#10B981',
+    },
+    progressActive: {
+        backgroundColor: '#2196F3',
+    },
+    progressNumber: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    progressLine: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#E5E7EB',
+    },
+    progressLineDone: {
+        backgroundColor: '#10B981',
     },
     scrollContent: {
         padding: Spacing.lg,
@@ -543,6 +719,22 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 11,
         fontWeight: '700',
+    },
+    channelLogoContainer: {
+        width: 56,
+        height: 36,
+        borderRadius: 6,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: Spacing.md,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        overflow: 'hidden',
+    },
+    channelLogo: {
+        width: 48,
+        height: 28,
     },
     channelLabel: {
         flex: 1,

@@ -33,16 +33,25 @@ export class SessionController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('THERAPIST')
   @Throttle(10, 60)
-  complete(@Param('id') id: string, @Body('notes') notes: string) {
-    return this.sessionService.completeSession(id, notes);
+  complete(
+    @Param('id') id: string,
+    @Body('notes') notes: string,
+    @Body('photoUrl') photoUrl?: string,
+  ) {
+    return this.sessionService.completeSession(id, notes, photoUrl);
   }
 
   @Post(':id/cancel')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT', 'THERAPIST')
   @Throttle(10, 60)
-  cancel(@Param('id') id: string) {
-    return this.sessionService.cancelSession(id);
+  cancel(
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+    @Req() req?: any,
+  ) {
+    const cancelledBy = req?.user?.role === 'THERAPIST' ? 'THERAPIST' : 'PATIENT';
+    return this.sessionService.cancelSession(id, reason, cancelledBy);
   }
 
   @Post(':id/schedule')
@@ -61,5 +70,20 @@ export class SessionController {
   @Roles('ADMIN')
   expire() {
     return this.sessionService.expirePendingSessions();
+  }
+
+  @Post(':id/swap-therapist')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('PATIENT', 'ADMIN')
+  @Throttle(10, 60)
+  swapTherapist(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('therapistId') therapistId: string,
+  ) {
+    return this.sessionService.swapTherapist(id, therapistId, {
+      id: req.user?.id,
+      role: req.user?.role,
+    });
   }
 }

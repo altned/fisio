@@ -14,6 +14,8 @@ import {
     Alert,
     ActivityIndicator,
     Linking,
+    Modal,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -24,6 +26,8 @@ import { useAuthStore } from '@/store/auth';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
 import { Booking, Session } from '@/types';
+import { RescheduleModal } from '@/components/RescheduleModal';
+import { SwapTherapistModal } from '@/components/SwapTherapistModal';
 
 // Format currency
 function formatCurrency(amount: string | number): string {
@@ -78,6 +82,8 @@ function SessionCard({
     onComplete,
     onCancel,
     onReview,
+    onSchedule,
+    onSwap,
     isLoading,
 }: {
     session: Session;
@@ -86,15 +92,33 @@ function SessionCard({
     onComplete: () => void;
     onCancel: () => void;
     onReview: () => void;
+    onSchedule?: () => void;
+    onSwap?: () => void;
     isLoading: boolean;
 }) {
     const colors = Colors.light;
     const statusInfo = getSessionStatusInfo(session.status);
     const isScheduled = session.status === 'SCHEDULED';
     const isCompleted = session.status === 'COMPLETED';
-    const canComplete = isTherapist && isScheduled;
+    const isPending = session.status === 'PENDING_SCHEDULING';
+
+    // Check if we're within 30 minutes of session time or after
+    const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
+    const now = new Date();
+    const minutesUntilSession = scheduledAt
+        ? (scheduledAt.getTime() - now.getTime()) / (1000 * 60)
+        : Infinity;
+
+    // Allow completion starting 30 minutes before scheduled time
+    const isTimeToComplete = minutesUntilSession <= 30;
+    const canComplete = isTherapist && isScheduled && isTimeToComplete;
     const canCancel = !isTherapist && isScheduled; // Patient can cancel scheduled sessions
     const canReview = !isTherapist && isCompleted && !hasReviewed; // Patient can review completed sessions if not reviewed yet
+    const canSchedule = !isTherapist && isPending && onSchedule; // Patient can schedule pending sessions
+    const canSwap = !isTherapist && isPending && onSwap; // Patient can swap therapist for pending sessions
+
+    // Show disabled complete button if scheduled but too early
+    const showDisabledComplete = isTherapist && isScheduled && !isTimeToComplete;
 
     return (
         <View style={[styles.sessionCard, { borderColor: colors.border }]}>
@@ -132,8 +156,23 @@ function SessionCard({
                 </View>
             )}
 
+            {/* Cancellation Info - Show if session was cancelled */}
+            {session.cancellationReason && (
+                <View style={[styles.cancellationInfo, { backgroundColor: colors.errorLight }]}>
+                    <View style={styles.cancellationHeader}>
+                        <Ionicons name="close-circle" size={16} color={colors.error} />
+                        <Text style={[styles.cancellationLabel, { color: colors.error }]}>
+                            Dibatalkan oleh {session.cancelledBy === 'PATIENT' ? 'Pasien' : session.cancelledBy === 'THERAPIST' ? 'Terapis' : 'Sistem'}
+                        </Text>
+                    </View>
+                    <Text style={[styles.cancellationReason, { color: colors.textSecondary }]}>
+                        Alasan: {session.cancellationReason}
+                    </Text>
+                </View>
+            )}
+
             {/* Action Buttons */}
-            {(canComplete || canCancel || canReview) && (
+            {(canComplete || canCancel || canReview || canSchedule || canSwap || showDisabledComplete) && (
                 <View style={styles.sessionActions}>
                     {canComplete && (
                         <TouchableOpacity
@@ -150,6 +189,18 @@ function SessionCard({
                                 </>
                             )}
                         </TouchableOpacity>
+                    )}
+                    {showDisabledComplete && (
+                        <View style={[styles.sessionActionButton, { backgroundColor: colors.textMuted }]}>
+                            <Ionicons name="time-outline" size={18} color="#fff" />
+                            <Text style={styles.sessionActionButtonText}>
+                                {minutesUntilSession > 60 * 24
+                                    ? `${Math.ceil(minutesUntilSession / (60 * 24))} hari lagi`
+                                    : minutesUntilSession > 60
+                                        ? `${Math.ceil(minutesUntilSession / 60)} jam lagi`
+                                        : `${Math.ceil(minutesUntilSession)} menit lagi`}
+                            </Text>
+                        </View>
                     )}
                     {canCancel && (
                         <TouchableOpacity
@@ -177,6 +228,26 @@ function SessionCard({
                             <Text style={styles.sessionActionButtonText}>Beri Review</Text>
                         </TouchableOpacity>
                     )}
+                    {canSchedule && (
+                        <TouchableOpacity
+                            style={[styles.sessionActionButton, { backgroundColor: colors.primary }]}
+                            onPress={onSchedule}
+                            disabled={isLoading}
+                        >
+                            <Ionicons name="calendar" size={18} color="#fff" />
+                            <Text style={styles.sessionActionButtonText}>Atur Jadwal</Text>
+                        </TouchableOpacity>
+                    )}
+                    {canSwap && (
+                        <TouchableOpacity
+                            style={[styles.sessionActionButton, { backgroundColor: colors.warning }]}
+                            onPress={onSwap}
+                            disabled={isLoading}
+                        >
+                            <Ionicons name="swap-horizontal" size={18} color="#fff" />
+                            <Text style={styles.sessionActionButtonText}>Ganti Terapis</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             )}
         </View>
@@ -196,6 +267,20 @@ export default function BookingDetailScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Cancel modal state
+    const [cancelModalVisible, setCancelModalVisible] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [sessionToCancel, setSessionToCancel] = useState<Session | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
+
+    // Reschedule modal state
+    const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
+    const [sessionToReschedule, setSessionToReschedule] = useState<Session | null>(null);
+
+    // Swap therapist modal state
+    const [swapTherapistModalVisible, setSwapTherapistModalVisible] = useState(false);
+    const [sessionToSwap, setSessionToSwap] = useState<Session | null>(null);
 
     // Fetch booking detail
     const fetchBooking = useCallback(async () => {
@@ -240,42 +325,36 @@ export default function BookingDetailScreen() {
         });
     };
 
-    // Handle cancel session with confirmation
+    // Handle cancel session - show modal for reason input
     const handleCancelSession = (session: Session) => {
-        const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
+        setSessionToCancel(session);
+        setCancelReason('');
+        setCancelModalVisible(true);
+    };
+
+    // Confirm cancel with reason
+    const confirmCancelSession = async () => {
+        if (!sessionToCancel) return;
+
+        const scheduledAt = sessionToCancel.scheduledAt ? new Date(sessionToCancel.scheduledAt) : null;
         const now = new Date();
         const hoursUntil = scheduledAt ? (scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60) : 0;
-
         const isForfeit = hoursUntil < 1;
-        const confirmMessage = isForfeit
-            ? 'Pembatalan kurang dari 1 jam sebelum sesi akan menyebabkan sesi HANGUS dan terapis tetap mendapat bayaran. Lanjutkan?'
-            : 'Apakah Anda yakin ingin membatalkan sesi ini? Jadwal akan dikembalikan ke status pending.';
 
-        Alert.alert(
-            'Batalkan Sesi',
-            confirmMessage,
-            [
-                { text: 'Tidak', style: 'cancel' },
-                {
-                    text: isForfeit ? 'Ya, Batalkan (Hangus)' : 'Ya, Batalkan',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setLoadingSessionId(session.id);
-                        try {
-                            await api.cancelSession(session.id);
-                            Alert.alert('Berhasil', isForfeit
-                                ? 'Sesi telah dibatalkan dan dihanguskan.'
-                                : 'Sesi berhasil dibatalkan.');
-                            await fetchBooking(); // Refresh data
-                        } catch (err: any) {
-                            Alert.alert('Gagal', err.message || 'Gagal membatalkan sesi');
-                        } finally {
-                            setLoadingSessionId(null);
-                        }
-                    },
-                },
-            ],
-        );
+        setIsCancelling(true);
+        try {
+            await api.post(`/sessions/${sessionToCancel.id}/cancel`, { reason: cancelReason.trim() || undefined });
+            Alert.alert('Berhasil', isForfeit
+                ? 'Sesi telah dibatalkan dan dihanguskan.'
+                : 'Sesi berhasil dibatalkan.');
+            setCancelModalVisible(false);
+            setSessionToCancel(null);
+            await fetchBooking(); // Refresh data
+        } catch (err: any) {
+            Alert.alert('Gagal', err.message || 'Gagal membatalkan sesi');
+        } finally {
+            setIsCancelling(false);
+        }
     };
 
     if (isLoading) {
@@ -315,6 +394,17 @@ export default function BookingDetailScreen() {
     const sortedSessions = [...(booking.sessions || [])].sort(
         (a, b) => a.sequenceOrder - b.sequenceOrder
     );
+
+    // Calculate session summary
+    const sessionSummary = {
+        total: sortedSessions.length,
+        completed: sortedSessions.filter(s => s.status === 'COMPLETED').length,
+        scheduled: sortedSessions.filter(s => s.status === 'SCHEDULED').length,
+        pending: sortedSessions.filter(s => s.status === 'PENDING_SCHEDULING').length,
+        forfeited: sortedSessions.filter(s => s.status === 'FORFEITED').length,
+        expired: sortedSessions.filter(s => s.status === 'EXPIRED').length,
+    };
+    const pendingSessions = sortedSessions.filter(s => s.status === 'PENDING_SCHEDULING');
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -430,6 +520,111 @@ export default function BookingDetailScreen() {
                     )}
                 </Card>
 
+                {/* Session Summary Card */}
+                <Card style={styles.summaryCard}>
+                    <View style={styles.summaryHeader}>
+                        <Ionicons name="stats-chart" size={20} color={colors.primary} />
+                        <Text style={[styles.summaryTitle, { color: colors.text }]}>Ringkasan Sesi</Text>
+                    </View>
+
+                    {/* Progress Bar */}
+                    <View style={styles.progressBarContainer}>
+                        <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                            {sessionSummary.completed > 0 && (
+                                <View
+                                    style={[
+                                        styles.progressSegment,
+                                        {
+                                            backgroundColor: colors.success,
+                                            width: `${(sessionSummary.completed / sessionSummary.total) * 100}%`
+                                        }
+                                    ]}
+                                />
+                            )}
+                            {sessionSummary.scheduled > 0 && (
+                                <View
+                                    style={[
+                                        styles.progressSegment,
+                                        {
+                                            backgroundColor: colors.info,
+                                            width: `${(sessionSummary.scheduled / sessionSummary.total) * 100}%`
+                                        }
+                                    ]}
+                                />
+                            )}
+                            {sessionSummary.pending > 0 && (
+                                <View
+                                    style={[
+                                        styles.progressSegment,
+                                        {
+                                            backgroundColor: colors.warning,
+                                            width: `${(sessionSummary.pending / sessionSummary.total) * 100}%`
+                                        }
+                                    ]}
+                                />
+                            )}
+                        </View>
+                        <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+                            {sessionSummary.completed}/{sessionSummary.total} selesai
+                        </Text>
+                    </View>
+
+                    {/* Status Breakdown */}
+                    <View style={styles.summaryStats}>
+                        {sessionSummary.completed > 0 && (
+                            <View style={styles.statItem}>
+                                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                                <Text style={[styles.statText, { color: colors.text }]}>
+                                    {sessionSummary.completed} Selesai
+                                </Text>
+                            </View>
+                        )}
+                        {sessionSummary.scheduled > 0 && (
+                            <View style={styles.statItem}>
+                                <Ionicons name="calendar" size={16} color={colors.info} />
+                                <Text style={[styles.statText, { color: colors.text }]}>
+                                    {sessionSummary.scheduled} Terjadwal
+                                </Text>
+                            </View>
+                        )}
+                        {sessionSummary.pending > 0 && (
+                            <View style={styles.statItem}>
+                                <Ionicons name="time" size={16} color={colors.warning} />
+                                <Text style={[styles.statText, { color: colors.text }]}>
+                                    {sessionSummary.pending} Belum Dijadwalkan
+                                </Text>
+                            </View>
+                        )}
+                        {sessionSummary.forfeited > 0 && (
+                            <View style={styles.statItem}>
+                                <Ionicons name="close-circle" size={16} color={colors.error} />
+                                <Text style={[styles.statText, { color: colors.text }]}>
+                                    {sessionSummary.forfeited} Hangus
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Quick Action - Schedule Pending */}
+                    {!isTherapist && pendingSessions.length > 0 && (
+                        <TouchableOpacity
+                            style={[styles.scheduleButton, { backgroundColor: colors.primary }]}
+                            onPress={() => {
+                                // Scroll to first pending session or show schedule modal
+                                Alert.alert(
+                                    'Jadwalkan Sesi',
+                                    `Anda memiliki ${pendingSessions.length} sesi yang belum dijadwalkan. Scroll ke bawah untuk melihat dan menjadwalkan.`
+                                );
+                            }}
+                        >
+                            <Ionicons name="calendar-outline" size={18} color="#fff" />
+                            <Text style={styles.scheduleButtonText}>
+                                Jadwalkan {pendingSessions.length} Sesi Pending
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </Card>
+
                 {/* Sessions */}
                 <View style={styles.sessionsSection}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -451,6 +646,14 @@ export default function BookingDetailScreen() {
                                     therapistName: booking.therapist?.user?.fullName || 'Terapis',
                                 }
                             })}
+                            onSchedule={session.status === 'PENDING_SCHEDULING' ? () => {
+                                setSessionToReschedule(session);
+                                setRescheduleModalVisible(true);
+                            } : undefined}
+                            onSwap={session.status === 'PENDING_SCHEDULING' ? () => {
+                                setSessionToSwap(session);
+                                setSwapTherapistModalVisible(true);
+                            } : undefined}
                             isLoading={loadingSessionId === session.id}
                         />
                     ))}
@@ -461,6 +664,96 @@ export default function BookingDetailScreen() {
                     Dibuat: {formatDate(booking.createdAt)}
                 </Text>
             </ScrollView>
+
+            {/* Cancel Reason Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={cancelModalVisible}
+                onRequestClose={() => setCancelModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Batalkan Sesi</Text>
+                            <TouchableOpacity onPress={() => setCancelModalVisible(false)}>
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+                            {sessionToCancel && sessionToCancel.scheduledAt &&
+                                ((new Date(sessionToCancel.scheduledAt).getTime() - new Date().getTime()) / (1000 * 60 * 60)) < 1
+                                ? 'Pembatalan kurang dari 1 jam sebelum sesi akan menyebabkan sesi HANGUS dan terapis tetap mendapat bayaran.'
+                                : 'Jadwal akan dikembalikan ke status pending dan Anda dapat menjadwalkan ulang.'}
+                        </Text>
+
+                        <Text style={[styles.inputLabel, { color: colors.text }]}>Alasan Pembatalan (opsional)</Text>
+                        <TextInput
+                            style={[styles.reasonInput, { borderColor: colors.border, color: colors.text }]}
+                            placeholder="Contoh: Ada keperluan mendadak"
+                            placeholderTextColor={colors.textMuted}
+                            value={cancelReason}
+                            onChangeText={setCancelReason}
+                            multiline
+                            numberOfLines={3}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonSecondary, { borderColor: colors.border }]}
+                                onPress={() => setCancelModalVisible(false)}
+                            >
+                                <Text style={[styles.modalButtonText, { color: colors.text }]}>Batal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonDanger, { backgroundColor: colors.error }]}
+                                onPress={confirmCancelSession}
+                                disabled={isCancelling}
+                            >
+                                {isCancelling ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Ya, Batalkan</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Reschedule Modal */}
+            <RescheduleModal
+                visible={rescheduleModalVisible}
+                onClose={() => {
+                    setRescheduleModalVisible(false);
+                    setSessionToReschedule(null);
+                }}
+                onSuccess={() => {
+                    setRescheduleModalVisible(false);
+                    setSessionToReschedule(null);
+                    fetchBooking();
+                }}
+                sessionId={sessionToReschedule?.id || ''}
+                therapistId={booking.therapist?.id || ''}
+                therapistName={booking.therapist?.user?.fullName}
+            />
+
+            {/* Swap Therapist Modal */}
+            <SwapTherapistModal
+                visible={swapTherapistModalVisible}
+                onClose={() => {
+                    setSwapTherapistModalVisible(false);
+                    setSessionToSwap(null);
+                }}
+                onSuccess={() => {
+                    setSwapTherapistModalVisible(false);
+                    setSessionToSwap(null);
+                    fetchBooking();
+                }}
+                sessionId={sessionToSwap?.id || ''}
+                currentTherapistId={booking.therapist?.id}
+            />
         </SafeAreaView>
     );
 }
@@ -687,5 +980,142 @@ const styles = StyleSheet.create({
     createdAt: {
         fontSize: Typography.fontSize.xs,
         textAlign: 'center',
+    },
+    // Cancellation info styles
+    cancellationInfo: {
+        padding: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginTop: Spacing.sm,
+    },
+    cancellationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginBottom: Spacing.xs,
+    },
+    cancellationLabel: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    cancellationReason: {
+        fontSize: Typography.fontSize.sm,
+        marginLeft: 20,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: BorderRadius.xl,
+        borderTopRightRadius: BorderRadius.xl,
+        padding: Spacing.lg,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    modalTitle: {
+        fontSize: Typography.fontSize.lg,
+        fontWeight: Typography.fontWeight.bold,
+    },
+    modalDescription: {
+        fontSize: Typography.fontSize.sm,
+        marginBottom: Spacing.lg,
+        lineHeight: 20,
+    },
+    inputLabel: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium,
+        marginBottom: Spacing.xs,
+    },
+    reasonInput: {
+        borderWidth: 1,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.md,
+        fontSize: Typography.fontSize.md,
+        textAlignVertical: 'top',
+        minHeight: 80,
+        marginBottom: Spacing.lg,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: Spacing.md,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalButtonSecondary: {
+        borderWidth: 1,
+    },
+    modalButtonDanger: {},
+    modalButtonText: {
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    // Session Summary Card styles
+    summaryCard: {
+        marginBottom: Spacing.lg,
+    },
+    summaryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    summaryTitle: {
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    progressBarContainer: {
+        marginBottom: Spacing.md,
+    },
+    progressBar: {
+        height: 8,
+        borderRadius: 4,
+        flexDirection: 'row',
+        overflow: 'hidden',
+        marginBottom: Spacing.xs,
+    },
+    progressSegment: {
+        height: '100%',
+    },
+    progressText: {
+        fontSize: Typography.fontSize.xs,
+        textAlign: 'right',
+    },
+    summaryStats: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.md,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+    },
+    statText: {
+        fontSize: Typography.fontSize.sm,
+    },
+    scheduleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginTop: Spacing.md,
+    },
+    scheduleButtonText: {
+        color: '#fff',
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.semibold,
     },
 });

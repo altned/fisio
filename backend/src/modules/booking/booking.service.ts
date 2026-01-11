@@ -72,6 +72,8 @@ export class BookingService {
         therapist,
         package: pkg ?? undefined,
         lockedAddress: input.lockedAddress,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
         totalPrice: totalPrice,
         adminFeeAmount: adminFeeAmount,
         therapistNetTotal: therapistNetTotal,
@@ -373,7 +375,7 @@ export class BookingService {
    * Cancel a session. If <1 hour before scheduled time, mark as FORFEITED and therapist still gets paid.
    * If >1 hour before, mark as CANCELLED and return quota.
    */
-  async cancelSession(sessionId: string, userId: string): Promise<Session> {
+  async cancelSession(sessionId: string, userId: string, reason?: string): Promise<Session> {
     return this.dataSource.transaction(async (manager) => {
       const sessionRepo = manager.getRepository(Session);
       const bookingRepo = manager.getRepository(Booking);
@@ -402,17 +404,23 @@ export class BookingService {
 
       const hoursUntilSession = (scheduledAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
+      // Set cancellation tracking fields
+      session.cancellationReason = reason || null;
+      session.cancelledAt = now;
+      session.cancelledBy = 'PATIENT';
+
       if (hoursUntilSession < 1) {
         // FORFEIT: <1 hour before session - therapist still gets paid
         session.status = 'FORFEITED';
         await sessionRepo.save(session);
 
         // Notify therapist about forfeited session
+        const reasonText = reason ? ` Alasan: ${reason}` : '';
         await this.notificationService.notifyPayoutSuccess({
           therapistId: session.therapist.id,
           deviceToken: session.booking.therapist.user?.fcmToken ?? undefined,
           title: 'Sesi Di-forfeit',
-          body: 'Pasien membatalkan <1 jam sebelum sesi. Anda tetap mendapat payout.',
+          body: `Pasien membatalkan <1 jam sebelum sesi. Anda tetap mendapat payout.${reasonText}`,
           meta: { sessionId: session.id, bookingId: session.booking.id },
         });
       } else {
@@ -422,11 +430,12 @@ export class BookingService {
         await sessionRepo.save(session);
 
         // Notify therapist about cancellation
+        const reasonText = reason ? ` Alasan: ${reason}` : '';
         await this.notificationService.notifySwapTherapist({
           therapistId: session.therapist.id,
           deviceToken: session.booking.therapist.user?.fcmToken ?? undefined,
           title: 'Sesi Dibatalkan',
-          body: 'Pasien membatalkan jadwal sesi. Slot dibebaskan.',
+          body: `Pasien membatalkan jadwal sesi.${reasonText}`,
           meta: { sessionId: session.id, bookingId: session.booking.id },
         });
       }

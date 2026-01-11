@@ -34,4 +34,9 @@ export class PackagesController {
     remove(@Param('id') id: string) {
         return this.packagesService.remove(id);
     }
+
+    @Patch(':id/toggle-active')
+    toggleActive(@Param('id') id: string) {
+        return this.packagesService.toggleActive(id);
+    }
 }

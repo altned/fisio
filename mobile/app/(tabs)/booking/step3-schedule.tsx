@@ -11,7 +11,6 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
-    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +19,8 @@ import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Card, Input } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
+import { MapPicker } from '@/components/MapPicker';
+import { useAuthStore } from '@/store/auth';
 
 // Generate time slots (90 min each, starting :00 or :30)
 function generateTimeSlots(): string[] {
@@ -78,6 +79,7 @@ function generateDates(): Date[] {
 export default function ScheduleScreen() {
     const colors = Colors.light;
     const router = useRouter();
+    const { user } = useAuthStore();
     const params = useLocalSearchParams<{
         therapistId: string;
         therapistName: string;
@@ -91,6 +93,37 @@ export default function ScheduleScreen() {
     const [selectedDate, setSelectedDate] = useState<Date>(generateDates()[0]);
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
     const [busySlots, setBusySlots] = useState<string[]>([]);
+    const [showMapPicker, setShowMapPicker] = useState(false);
+    const [latitude, setLatitude] = useState<number | null>(null);
+    const [longitude, setLongitude] = useState<number | null>(null);
+    const [useProfileAddress, setUseProfileAddress] = useState(false);
+
+    // Check if profile has address data
+    const hasProfileAddress = Boolean(user?.address && user.address.trim().length > 0);
+    const hasProfileCoordinates = Boolean(user?.latitude && user?.longitude);
+
+    // Handle toggle profile address
+    const handleUseProfileAddress = () => {
+        if (!hasProfileAddress) {
+            Alert.alert('Alamat Profil Kosong', 'Anda belum mengisi alamat di profil. Silakan input alamat secara manual.');
+            return;
+        }
+
+        setUseProfileAddress(true);
+        setAddress(user?.address || '');
+        if (hasProfileCoordinates) {
+            setLatitude(user?.latitude || null);
+            setLongitude(user?.longitude || null);
+        }
+    };
+
+    // Handle switch to manual input
+    const handleManualInput = () => {
+        setUseProfileAddress(false);
+        setAddress('');
+        setLatitude(null);
+        setLongitude(null);
+    };
 
     const allTimeSlots = useMemo(() => generateTimeSlots(), []);
     const availableDates = useMemo(() => generateDates(), []);
@@ -174,6 +207,8 @@ export default function ScheduleScreen() {
                 totalPrice: params.totalPrice,
                 sessionCount: params.sessionCount,
                 address: address.trim(),
+                latitude: latitude?.toString() || '',
+                longitude: longitude?.toString() || '',
                 scheduledAt: scheduledAt.toISOString(),
                 bookingType: isToday ? 'INSTANT' : 'REGULAR',
             },
@@ -183,6 +218,40 @@ export default function ScheduleScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+            {/* Enhanced Header */}
+            <View style={[styles.headerSection, { backgroundColor: colors.primary }]}>
+                <View style={styles.headerContent}>
+                    <View style={styles.headerIconContainer}>
+                        <Ionicons name="calendar-outline" size={24} color="#fff" />
+                    </View>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitle}>Jadwal & Lokasi</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {params.packageName} • {params.therapistName}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Progress Indicator */}
+            <View style={styles.progressContainer}>
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressActive, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.progressNumber}>3</Text>
+                </View>
+                <View style={styles.progressLine} />
+                <View style={styles.progressStep}>
+                    <Text style={[styles.progressNumber, { color: '#9CA3AF' }]}>4</Text>
+                </View>
+            </View>
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Summary */}
                 <Card style={styles.summaryCard}>
@@ -204,36 +273,124 @@ export default function ScheduleScreen() {
                 </Card>
 
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Alamat Lengkap</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Alamat Home Visit</Text>
+
+                    {/* Quick Options: Use Profile or Manual */}
+                    <View style={styles.addressOptionsRow}>
+                        <TouchableOpacity
+                            style={[
+                                styles.addressOption,
+                                useProfileAddress && styles.addressOptionActive,
+                                { borderColor: useProfileAddress ? colors.primary : colors.border }
+                            ]}
+                            onPress={handleUseProfileAddress}
+                        >
+                            <Ionicons
+                                name="person-circle-outline"
+                                size={20}
+                                color={useProfileAddress ? colors.primary : colors.textSecondary}
+                            />
+                            <Text style={[
+                                styles.addressOptionText,
+                                { color: useProfileAddress ? colors.primary : colors.textSecondary }
+                            ]}>
+                                Alamat Profil
+                            </Text>
+                            {useProfileAddress && (
+                                <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.addressOption,
+                                !useProfileAddress && styles.addressOptionActive,
+                                { borderColor: !useProfileAddress ? colors.primary : colors.border }
+                            ]}
+                            onPress={handleManualInput}
+                        >
+                            <Ionicons
+                                name="create-outline"
+                                size={20}
+                                color={!useProfileAddress ? colors.primary : colors.textSecondary}
+                            />
+                            <Text style={[
+                                styles.addressOptionText,
+                                { color: !useProfileAddress ? colors.primary : colors.textSecondary }
+                            ]}>
+                                Input Manual
+                            </Text>
+                            {!useProfileAddress && (
+                                <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Address Input */}
                     <Input
                         placeholder="Masukkan alamat lengkap untuk home visit..."
                         value={address}
-                        onChangeText={setAddress}
+                        onChangeText={(text) => {
+                            setAddress(text);
+                            if (useProfileAddress && text !== user?.address) {
+                                setUseProfileAddress(false); // Switch to manual if user edits
+                            }
+                        }}
                         multiline
                         numberOfLines={3}
-                        style={styles.addressInput}
                     />
-                    <View style={styles.addressActions}>
-                        <Text style={[styles.hint, { color: colors.textMuted, flex: 1 }]}>
-                            Alamat ini akan dikunci untuk semua sesi dalam paket
-                        </Text>
-                        {address.trim().length > 10 && (
-                            <TouchableOpacity
-                                style={[styles.mapButton, { backgroundColor: colors.primaryLight }]}
-                                onPress={() => {
-                                    const encodedAddress = encodeURIComponent(address.trim());
-                                    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-                                    Linking.openURL(url).catch(() => {
-                                        Alert.alert('Error', 'Tidak dapat membuka Google Maps');
-                                    });
-                                }}
-                            >
-                                <Ionicons name="location" size={16} color={colors.primary} />
-                                <Text style={[styles.mapButtonText, { color: colors.primary }]}>Cek di Maps</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <Text style={[styles.hint, { color: colors.textMuted }]}>
+                        Alamat ini akan dikunci untuk semua sesi dalam paket
+                    </Text>
                 </View>
+
+                {/* Location Picker */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Titik Koordinat</Text>
+                    <TouchableOpacity
+                        style={[styles.locationPickerButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                        onPress={() => setShowMapPicker(true)}
+                    >
+                        <View style={styles.locationIconContainer}>
+                            <Ionicons name="navigate" size={20} color="#2196F3" />
+                        </View>
+                        <View style={styles.locationTextContainer}>
+                            {latitude && longitude ? (
+                                <>
+                                    <Text style={[styles.locationLabel, { color: colors.text }]}>
+                                        Lokasi Dipilih
+                                    </Text>
+                                    <Text style={[styles.locationCoords, { color: colors.textMuted }]}>
+                                        📍 {Number(latitude).toFixed(6)}, {Number(longitude).toFixed(6)}
+                                    </Text>
+                                </>
+                            ) : (
+                                <Text style={[styles.locationPlaceholder, { color: colors.textMuted }]}>
+                                    Tap untuk pilih titik lokasi di peta
+                                </Text>
+                            )}
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                    </TouchableOpacity>
+                    <Text style={[styles.hint, { color: colors.textMuted }]}>
+                        Koordinat digunakan terapis untuk navigasi ke lokasi Anda
+                    </Text>
+                </View>
+
+                {/* Map Picker Modal */}
+                <MapPicker
+                    visible={showMapPicker}
+                    onClose={() => setShowMapPicker(false)}
+                    onConfirm={(location) => {
+                        setLatitude(location.latitude);
+                        setLongitude(location.longitude);
+                        // Auto-fill address if empty
+                        if (location.address && !address.trim()) {
+                            setAddress(location.address);
+                        }
+                    }}
+                    initialLocation={latitude && longitude ? { latitude, longitude } : undefined}
+                    title="Pilih Lokasi Home Visit"
+                />
 
                 {/* Date Selection */}
                 <View style={styles.section}>
@@ -349,6 +506,71 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    // Header styles
+    headerSection: {
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.lg,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    headerIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerTitle: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    headerSubtitle: {
+        fontSize: Typography.fontSize.sm,
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 2,
+    },
+    // Progress indicator styles
+    progressContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.md,
+    },
+    progressStep: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    progressDone: {
+        backgroundColor: '#10B981',
+    },
+    progressActive: {
+        backgroundColor: '#2196F3',
+    },
+    progressNumber: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    progressLine: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#E5E7EB',
+    },
+    progressLineDone: {
+        backgroundColor: '#10B981',
+    },
     scrollContent: {
         padding: Spacing.lg,
         paddingBottom: 120,
@@ -390,6 +612,29 @@ const styles = StyleSheet.create({
     hint: {
         fontSize: Typography.fontSize.xs,
         marginTop: Spacing.xs,
+    },
+    addressOptionsRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    addressOption: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        gap: Spacing.xs,
+    },
+    addressOptionActive: {
+        backgroundColor: 'rgba(33, 150, 243, 0.08)',
+    },
+    addressOptionText: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium,
     },
     addressActions: {
         flexDirection: 'row',
@@ -466,5 +711,36 @@ const styles = StyleSheet.create({
     footerPrice: {
         fontSize: Typography.fontSize.lg,
         fontWeight: Typography.fontWeight.bold,
+    },
+    // Location Picker styles
+    locationPickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+    },
+    locationIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E3F2FD',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+    },
+    locationTextContainer: {
+        flex: 1,
+    },
+    locationLabel: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.medium,
+    },
+    locationCoords: {
+        fontSize: Typography.fontSize.xs,
+        marginTop: 2,
+    },
+    locationPlaceholder: {
+        fontSize: Typography.fontSize.sm,
     },
 });

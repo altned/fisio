@@ -4,6 +4,7 @@
 
 // User & Auth
 export type UserRole = 'PATIENT' | 'THERAPIST' | 'ADMIN';
+export type Gender = 'MALE' | 'FEMALE';
 
 export interface User {
     id: string;
@@ -12,6 +13,21 @@ export interface User {
     role: UserRole;
     isProfileComplete: boolean;
     fcmToken?: string | null;
+    phoneNumber?: string | null;
+    address?: string | null;
+    profilePhotoUrl?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    // Extended patient profile fields
+    birthDate?: string | null;
+    gender?: Gender | null;
+    bloodType?: string | null;
+    allergies?: string | null;
+    medicalHistory?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    height?: number | null;
+    weight?: number | null;
     createdAt: string;
 }
 
@@ -39,6 +55,16 @@ export interface Therapist {
     totalReviews: number;
     photoUrl?: string | null;
     bio?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    distance?: number; // Calculated distance in km (from nearby endpoint)
+    // Extended therapist profile fields
+    birthDate?: string | null;
+    gender?: Gender | null;
+    strNumber?: string | null;
+    strExpiryDate?: string | null;
+    education?: string | null;
+    certifications?: string | null;
     user?: {
         id: string;
         fullName: string;
@@ -65,6 +91,8 @@ export interface Booking {
     therapist: Therapist;
     package?: Package | null;
     lockedAddress: string;
+    latitude?: number | null;
+    longitude?: number | null;
     totalPrice: string;
     adminFeeAmount: string;
     therapistNetTotal: string;
@@ -108,6 +136,10 @@ export interface Session {
     scheduledAt?: string | null;
     status: SessionStatus;
     isPayoutDistributed: boolean;
+    // Cancellation tracking
+    cancellationReason?: string | null;
+    cancelledAt?: string | null;
+    cancelledBy?: 'PATIENT' | 'THERAPIST' | 'SYSTEM' | null;
 }
 
 // Wallet

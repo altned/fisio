@@ -17,6 +17,8 @@ export type TherapistBidang =
   | 'Fisioterapi Geriatrik'
   | 'Fisioterapi Olahraga';
 
+export type TherapistGender = 'MALE' | 'FEMALE';
+
 @Entity({ name: 'therapists' })
 export class Therapist {
   @PrimaryGeneratedColumn('uuid')
@@ -59,10 +61,31 @@ export class Therapist {
   @Column({ name: 'total_reviews', type: 'integer', default: 0 })
   totalReviews!: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  latitude!: number | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  longitude!: number | null;
+
+  // Extended therapist profile fields
+  @Column({ name: 'birth_date', type: 'date', nullable: true })
+  birthDate!: Date | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  gender!: TherapistGender | null;
+
+  @Column({ name: 'str_expiry_date', type: 'date', nullable: true })
+  strExpiryDate!: Date | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  education!: string | null; // e.g., "S1 Fisioterapi UI"
+
+  @Column({ type: 'text', nullable: true })
+  certifications!: string | null; // JSON string or comma-separated
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
 }
-

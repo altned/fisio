@@ -38,6 +38,12 @@ export class Booking {
   @Column({ name: 'locked_address', type: 'text' })
   lockedAddress!: string;
 
+  @Column({ name: 'latitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  latitude!: number | null;
+
+  @Column({ name: 'longitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  longitude!: number | null;
+
   @Column({ name: 'total_price', type: 'numeric', precision: 12, scale: 2 })
   totalPrice!: string;
 

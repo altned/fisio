@@ -50,4 +50,18 @@ export class Session {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
+
+  // Cancellation tracking
+  @Column({ name: 'cancellation_reason', type: 'text', nullable: true })
+  cancellationReason!: string | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamp with time zone', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Column({ name: 'cancelled_by', type: 'varchar', length: 20, nullable: true })
+  cancelledBy!: 'PATIENT' | 'THERAPIST' | 'SYSTEM' | null;
+
+  // Photo documentation for session completion
+  @Column({ name: 'completion_photo_url', type: 'text', nullable: true })
+  completionPhotoUrl!: string | null;
 }

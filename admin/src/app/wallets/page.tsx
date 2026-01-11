@@ -88,7 +88,7 @@ export default function WalletsPage() {
     }, [API_BASE_URL, adminToken]);
 
     const handleTopup = async () => {
-        if (!selectedTherapist || !amount || !adminNote) {
+        if (!selectedTherapist || !wallet || !amount || !adminNote) {
             setError('Amount dan Admin Note wajib diisi');
             return;
         }
@@ -98,7 +98,7 @@ export default function WalletsPage() {
         try {
             await apiFetch(
                 API_BASE_URL,
-                `/admin/wallets/${selectedTherapist.id}/topup`,
+                `/admin/wallets/${wallet.id}/topup`,
                 {
                     method: 'POST',
                     body: { amount: parseFloat(amount), adminNote },
@@ -109,6 +109,8 @@ export default function WalletsPage() {
             setModalType(null);
             setAmount('');
             setAdminNote('');
+            // Refresh wallet details after successful topup
+            loadWalletDetails(selectedTherapist.id);
         } catch (err) {
             setError((err as Error).message);
         } finally {
@@ -117,7 +119,7 @@ export default function WalletsPage() {
     };
 
     const handleWithdraw = async () => {
-        if (!selectedTherapist || !amount || !adminNote) {
+        if (!selectedTherapist || !wallet || !amount || !adminNote) {
             setError('Amount dan Admin Note wajib diisi');
             return;
         }
@@ -127,7 +129,7 @@ export default function WalletsPage() {
         try {
             await apiFetch(
                 API_BASE_URL,
-                `/admin/wallets/${selectedTherapist.id}/withdraw`,
+                `/admin/wallets/${wallet.id}/withdraw`,
                 {
                     method: 'POST',
                     body: { amount: parseFloat(amount), adminNote },
@@ -138,6 +140,8 @@ export default function WalletsPage() {
             setModalType(null);
             setAmount('');
             setAdminNote('');
+            // Refresh wallet details after successful withdraw
+            loadWalletDetails(selectedTherapist.id);
         } catch (err) {
             setError((err as Error).message);
         } finally {

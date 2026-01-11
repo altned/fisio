@@ -62,6 +62,10 @@ export class AuthService {
                 email: user.email,
                 fullName: user.fullName,
                 role: user.role,
+                isProfileComplete: user.isProfileComplete,
+                phoneNumber: user.phoneNumber,
+                address: user.address,
+                profilePhotoUrl: user.profilePhotoUrl,
             },
         };
     }
@@ -172,6 +176,9 @@ export class AuthService {
                 fullName: user.fullName,
                 role: user.role,
                 isProfileComplete: user.isProfileComplete,
+                phoneNumber: user.phoneNumber,
+                address: user.address,
+                profilePhotoUrl: user.profilePhotoUrl,
             },
         };
     }

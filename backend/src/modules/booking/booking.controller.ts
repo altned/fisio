@@ -55,6 +55,8 @@ export class BookingController {
       ...body,
       userId: req.user.id, // Get user from JWT token
       lockedAddress: body.address || body.lockedAddress, // Support both field names
+      latitude: body.latitude ?? null,
+      longitude: body.longitude ?? null,
       scheduledAt: new Date(body.scheduledAt),
     });
   }

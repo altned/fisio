@@ -5,6 +5,8 @@ export interface CreateBookingDto {
   therapistId: string;
   packageId?: string;
   lockedAddress: string;
+  latitude?: number | null;
+  longitude?: number | null;
   scheduledAt: Date;
   bookingType: BookingType;
   totalPrice: string;

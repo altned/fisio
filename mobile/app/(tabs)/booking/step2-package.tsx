@@ -1,5 +1,6 @@
 /**
  * Step 2: Package Selection
+ * Enhanced with modern premium card design and better visual hierarchy
  */
 
 import React, { useEffect, useState } from 'react';
@@ -14,10 +15,22 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
-import { Card, Badge } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import api from '@/lib/api';
 import { Package } from '@/types';
+
+// Modern icon mapping for packages
+const getPackageIcon = (sessionCount: number) => {
+    if (sessionCount === 1) return 'flash-outline';
+    if (sessionCount <= 4) return 'leaf-outline';
+    if (sessionCount <= 8) return 'diamond-outline';
+    return 'trophy-outline';
+};
+
+const getPackageColor = (index: number) => {
+    const colors = ['#6366F1', '#10B981', '#F59E0B', '#EC4899'];
+    return colors[index % colors.length];
+};
 
 export default function PackageSelectionScreen() {
     const colors = Colors.light;
@@ -43,7 +56,6 @@ export default function PackageSelectionScreen() {
     }, []);
 
     const handleSelectPackage = (pkg: Package) => {
-        // Navigate to schedule & address step
         router.push({
             pathname: '/(tabs)/booking/step3-schedule',
             params: {
@@ -65,53 +77,149 @@ export default function PackageSelectionScreen() {
         }).format(Number(price));
     };
 
-    const renderItem = ({ item }: { item: Package }) => (
-        <TouchableOpacity
-            onPress={() => handleSelectPackage(item)}
-            activeOpacity={0.7}
-        >
-            <Card style={styles.card} shadow>
-                <View style={styles.header}>
-                    <Text style={[styles.packageName, { color: colors.text }]}>{item.name}</Text>
-                    {item.sessionCount > 1 && (
-                        <Badge label="HEMAT" variant="success" size="sm" />
+    const getPricePerSession = (totalPrice: string, sessionCount: number) => {
+        const total = Number(totalPrice);
+        const perSession = total / sessionCount;
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(perSession);
+    };
+
+    const renderItem = ({ item, index }: { item: Package; index: number }) => {
+        const accentColor = getPackageColor(index);
+        const iconName = getPackageIcon(item.sessionCount);
+        const isPopular = item.sessionCount === 4; // Paket 4 sesi biasanya populer
+        const isBestValue = item.sessionCount >= 8; // Paket 8+ sesi adalah best value
+
+        return (
+            <TouchableOpacity
+                onPress={() => handleSelectPackage(item)}
+                activeOpacity={0.85}
+                style={styles.packageCardWrapper}
+            >
+                <View style={[
+                    styles.packageCard,
+                    { backgroundColor: colors.card },
+                    (isPopular || isBestValue) && styles.featuredCard
+                ]}>
+                    {/* Featured Badge */}
+                    {isPopular && (
+                        <View style={[styles.featuredBadge, { backgroundColor: '#6366F1' }]}>
+                            <Ionicons name="star" size={10} color="#fff" />
+                            <Text style={styles.featuredBadgeText}>POPULER</Text>
+                        </View>
                     )}
-                </View>
+                    {isBestValue && !isPopular && (
+                        <View style={[styles.featuredBadge, { backgroundColor: '#10B981' }]}>
+                            <Ionicons name="pricetag" size={10} color="#fff" />
+                            <Text style={styles.featuredBadgeText}>BEST VALUE</Text>
+                        </View>
+                    )}
 
-                <View style={styles.details}>
-                    <View style={styles.detailItem}>
-                        <Ionicons name="medical" size={20} color={colors.primary} />
-                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                            {item.sessionCount} Sesi Terapi
-                        </Text>
+                    {/* Top Section with Icon and Name */}
+                    <View style={styles.cardTop}>
+                        <View style={[styles.packageIconContainer, { backgroundColor: accentColor }]}>
+                            <Ionicons name={iconName as any} size={28} color="#fff" />
+                        </View>
+                        <View style={styles.packageInfo}>
+                            <Text style={[styles.packageName, { color: colors.text }]}>{item.name}</Text>
+                            <View style={styles.sessionBadge}>
+                                <Ionicons name="calendar-outline" size={14} color={accentColor} />
+                                <Text style={[styles.sessionText, { color: accentColor }]}>
+                                    {item.sessionCount} Sesi
+                                </Text>
+                            </View>
+                        </View>
                     </View>
-                    <View style={styles.detailItem}>
-                        <Ionicons name="time" size={20} color={colors.primary} />
-                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                            90 Menit / Sesi
-                        </Text>
+
+                    {/* Features */}
+                    <View style={styles.featuresContainer}>
+                        <View style={styles.featureItem}>
+                            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                                {item.sessionCount} × Terapi di Rumah
+                            </Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                                90 Menit per Sesi
+                            </Text>
+                        </View>
+                        <View style={styles.featureItem}>
+                            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                            <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                                Konsultasi Gratis via Chat
+                            </Text>
+                        </View>
+                        {item.sessionCount > 1 && (
+                            <View style={styles.featureItem}>
+                                <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                                <Text style={[styles.featureText, { color: colors.textSecondary }]}>
+                                    Fleksibel Jadwal
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Price Section */}
+                    <View style={[styles.priceSection, { borderTopColor: colors.border }]}>
+                        <View style={styles.priceInfo}>
+                            {item.sessionCount > 1 && (
+                                <Text style={[styles.perSessionPrice, { color: colors.textMuted }]}>
+                                    {getPricePerSession(item.totalPrice, item.sessionCount)}/sesi
+                                </Text>
+                            )}
+                            <Text style={[styles.totalPrice, { color: accentColor }]}>
+                                {formatPrice(item.totalPrice)}
+                            </Text>
+                        </View>
+                        <View style={[styles.selectBtn, { backgroundColor: accentColor }]}>
+                            <Text style={styles.selectBtnText}>Pilih</Text>
+                            <Ionicons name="arrow-forward" size={16} color="#fff" />
+                        </View>
                     </View>
                 </View>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                <View style={styles.footer}>
-                    <View>
-                        <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Total Harga</Text>
-                        <Text style={[styles.price, { color: colors.primary }]}>{formatPrice(item.totalPrice)}</Text>
-                    </View>
-                    <Ionicons name="arrow-forward-circle" size={32} color={colors.primary} />
-                </View>
-            </Card>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.subHeader}>
-                <Text style={[styles.selectedTherapist, { color: colors.textSecondary }]}>
-                    Terapis: <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{params.therapistName}</Text>
-                </Text>
+            {/* Enhanced Header */}
+            <View style={[styles.header, { backgroundColor: colors.primary }]}>
+                <View style={styles.headerContent}>
+                    <View style={styles.headerIconContainer}>
+                        <Ionicons name="cube-outline" size={24} color="#fff" />
+                    </View>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitle}>Pilih Paket</Text>
+                        <Text style={styles.headerSubtitle}>
+                            Terapis: {params.therapistName}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Progress Indicator */}
+            <View style={styles.progressContainer}>
+                <View style={[styles.progressStep, styles.progressDone]}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <View style={[styles.progressLine, styles.progressLineDone]} />
+                <View style={[styles.progressStep, styles.progressActive, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.progressNumber}>2</Text>
+                </View>
+                <View style={styles.progressLine} />
+                <View style={styles.progressStep}>
+                    <Text style={[styles.progressNumber, { color: colors.textMuted }]}>3</Text>
+                </View>
+                <View style={styles.progressLine} />
+                <View style={styles.progressStep}>
+                    <Text style={[styles.progressNumber, { color: colors.textMuted }]}>4</Text>
+                </View>
             </View>
 
             {loading ? (
@@ -124,9 +232,7 @@ export default function PackageSelectionScreen() {
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={
-                        <Text style={[styles.listTitle, { color: colors.text }]}>Pilih Paket Layanan</Text>
-                    }
+                    showsVerticalScrollIndicator={false}
                 />
             )}
         </View>
@@ -137,13 +243,69 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    subHeader: {
-        padding: Spacing.md,
-        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    header: {
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.lg,
     },
-    selectedTherapist: {
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    headerIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTextContainer: {
+        flex: 1,
+    },
+    headerTitle: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    headerSubtitle: {
         fontSize: Typography.fontSize.sm,
-        textAlign: 'center',
+        color: 'rgba(255,255,255,0.9)',
+        marginTop: 2,
+    },
+    progressContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.md,
+        gap: 0,
+    },
+    progressStep: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    progressDone: {
+        backgroundColor: '#10B981',
+    },
+    progressActive: {
+        backgroundColor: '#2196F3',
+    },
+    progressNumber: {
+        fontSize: Typography.fontSize.xs,
+        fontWeight: Typography.fontWeight.bold,
+        color: '#fff',
+    },
+    progressLine: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#E5E7EB',
+    },
+    progressLineDone: {
+        backgroundColor: '#10B981',
     },
     center: {
         flex: 1,
@@ -152,56 +314,115 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: Spacing.lg,
-        gap: Spacing.md,
+        gap: Spacing.lg,
     },
-    listTitle: {
-        fontSize: Typography.fontSize.xl,
-        fontWeight: Typography.fontWeight.bold,
-        marginBottom: Spacing.sm,
+    packageCardWrapper: {
+        marginBottom: 0,
     },
-    card: {
-        padding: 0,
+    packageCard: {
+        borderRadius: BorderRadius.lg,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
+        position: 'relative',
     },
-    header: {
-        padding: Spacing.md,
+    featuredCard: {
+        borderWidth: 2,
+        borderColor: '#6366F1',
+    },
+    featuredBadge: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+        borderBottomLeftRadius: BorderRadius.md,
+        gap: 4,
+        zIndex: 1,
+    },
+    featuredBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: Typography.fontWeight.bold,
+    },
+    cardTop: {
+        flexDirection: 'row',
+        padding: Spacing.lg,
+        gap: Spacing.md,
+        alignItems: 'center',
+    },
+    packageIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    packageInfo: {
+        flex: 1,
     },
     packageName: {
         fontSize: Typography.fontSize.lg,
         fontWeight: Typography.fontWeight.bold,
+        marginBottom: 4,
     },
-    details: {
-        paddingHorizontal: Spacing.md,
+    sessionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    sessionText: {
+        fontSize: Typography.fontSize.sm,
+        fontWeight: Typography.fontWeight.semibold,
+    },
+    featuresContainer: {
+        paddingHorizontal: Spacing.lg,
         paddingBottom: Spacing.md,
-        gap: Spacing.sm,
+        gap: Spacing.xs,
     },
-    detailItem: {
+    featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.sm,
     },
-    detailText: {
-        fontSize: Typography.fontSize.md,
+    featureText: {
+        fontSize: Typography.fontSize.sm,
     },
-    divider: {
-        height: 1,
-    },
-    footer: {
-        padding: Spacing.md,
+    priceSection: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#FAFAFA',
-        borderBottomLeftRadius: BorderRadius.lg,
-        borderBottomRightRadius: BorderRadius.lg,
+        padding: Spacing.lg,
+        backgroundColor: '#F9FAFB',
+        borderTopWidth: 1,
     },
-    priceLabel: {
+    priceInfo: {
+        flex: 1,
+    },
+    perSessionPrice: {
         fontSize: Typography.fontSize.xs,
+        marginBottom: 2,
     },
-    price: {
-        fontSize: Typography.fontSize.lg,
+    totalPrice: {
+        fontSize: Typography.fontSize.xl,
         fontWeight: Typography.fontWeight.bold,
+    },
+    selectBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.full,
+        gap: Spacing.xs,
+    },
+    selectBtnText: {
+        color: '#fff',
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.semibold,
     },
 });

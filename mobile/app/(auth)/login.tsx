@@ -113,13 +113,11 @@ export default function LoginScreen() {
                 >
                     {/* Logo & Header */}
                     <View style={styles.header}>
-                        <View style={[styles.logoContainer, { backgroundColor: colors.primaryLight }]}>
-                            <Ionicons name="medical" size={48} color={colors.primary} />
-                        </View>
-                        <Text style={[styles.title, { color: colors.text }]}>Fisioku</Text>
-                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                            Layanan Fisioterapi Home Visit
-                        </Text>
+                        <Image
+                            source={require('@/assets/images/logo.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                     </View>
 
                     {/* Form */}
@@ -232,22 +230,17 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: Spacing.xl,
+        paddingTop: Spacing.xl,
     },
-    logoContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: BorderRadius.xl,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: Spacing.md,
-    },
-    title: {
-        fontSize: Typography.fontSize['3xl'],
-        fontWeight: Typography.fontWeight.bold,
+    logo: {
+        width: 220,
+        height: 90,
+        marginBottom: Spacing.lg,
     },
     subtitle: {
         fontSize: Typography.fontSize.md,
         marginTop: Spacing.xs,
+        textAlign: 'center',
     },
     form: {
         marginBottom: Spacing.xl,

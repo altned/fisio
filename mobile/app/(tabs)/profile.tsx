@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -67,7 +67,14 @@ export default function ProfileScreen() {
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-                        <Ionicons name="person" size={48} color={colors.primary} />
+                        {user?.profilePhotoUrl ? (
+                            <Image
+                                source={{ uri: user.profilePhotoUrl }}
+                                style={styles.avatarImage}
+                            />
+                        ) : (
+                            <Ionicons name="person" size={48} color={colors.primary} />
+                        )}
                     </View>
                     <Text style={[styles.name, { color: colors.text }]}>{user?.fullName || 'User'}</Text>
                     <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email}</Text>
@@ -88,7 +95,7 @@ export default function ProfileScreen() {
                     <MenuItem
                         icon="notifications-outline"
                         label="Notifikasi"
-                        onPress={handleNotifikasi}
+                        onPress={() => router.push('/notification-settings')}
                         colors={colors}
                     />
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -163,6 +170,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.md,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
     },
     name: {
         fontSize: Typography.fontSize.xl,
