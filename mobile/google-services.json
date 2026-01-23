@@ -1,0 +1,34 @@
+{
+    "project_info": {
+        "project_number": "976366638308",
+        "project_id": "fisioku-f83e9",
+        "storage_bucket": "fisioku-f83e9.appspot.com"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:976366638308:android:1f77a11550f922f9d7c8f1",
+                "android_client_info": {
+                    "package_name": "com.fisioku.app"
+                }
+            },
+            "oauth_client": [
+                {
+                    "client_id": "976366638308-placeholder.apps.googleusercontent.com",
+                    "client_type": 3
+                }
+            ],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyAzGefiaAgfD8QOiUFgUpB3x332xI2-WfM"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

@@ -26,7 +26,6 @@ coverage
 
 # Secrets
 backend/firebase-service-account.json
-mobile/google-services.json
 set_password.sql
 *.sql
 *.key
