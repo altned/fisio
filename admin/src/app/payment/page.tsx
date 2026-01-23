@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import styles from './page.module.css';
-import { useSettingsStore } from '../../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
 import { useRequireAuth } from '../../lib/useRequireAuth';
 
@@ -67,7 +67,7 @@ function formatCountdown(expiry?: string | null) {
 }
 
 export default function PaymentStatusPage() {
-  const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+  const { adminToken, hydrate } = useSettingsStore();
   const [bookingId, setBookingId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export default function PaymentStatusPage() {
       setError('Isi Booking ID terlebih dahulu');
       return;
     }
-    if (!apiBaseUrl || !adminToken) {
+    if (!API_BASE_URL || !adminToken) {
       setError('Isi API Base URL dan Admin Token pada Settings Bar');
       return;
     }
@@ -91,7 +91,7 @@ export default function PaymentStatusPage() {
     setError(null);
     setDetail(null);
     try {
-      const data = await apiFetch<BookingDetail>(apiBaseUrl, `/bookings/${bookingId.trim()}`, {
+      const data = await apiFetch<BookingDetail>(API_BASE_URL, `/bookings/${bookingId.trim()}`, {
         tokenOverride: adminToken,
       });
       setDetail(data);
@@ -100,7 +100,7 @@ export default function PaymentStatusPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, apiBaseUrl, bookingId]);
+  }, [adminToken, bookingId]);
 
   useEffect(() => {
     if (!detail || !bookingId.trim()) return;

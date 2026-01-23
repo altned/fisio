@@ -99,16 +99,6 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-
-      <div className="card mt-md" style={{ maxWidth: 400 }}>
-        <div className="text-sm text-muted">
-          <strong>💡 Default credentials:</strong>
-          <ul style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
-            <li>Email: admin@example.com</li>
-            <li>Password: admin123</li>
-          </ul>
-        </div>
-      </div>
     </>
   );
 }

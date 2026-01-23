@@ -7,12 +7,12 @@ import { Throttle } from '@nestjs/throttler';
 
 @Controller('reviews')
 export class ReviewController {
-  constructor(private readonly reviewService: ReviewService) {}
+  constructor(private readonly reviewService: ReviewService) { }
 
   @Post()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT')
-  @Throttle(5, 60)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   submit(@Body() body: SubmitReviewDto): Promise<Review> {
     return this.reviewService.submitReview(body);
   }

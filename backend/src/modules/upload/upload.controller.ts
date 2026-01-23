@@ -35,4 +35,28 @@ export class UploadController {
             size: file.size,
         };
     }
+
+    /**
+     * Upload session completion photo (Therapist only)
+     * Used when therapist completes a session with photo documentation
+     */
+    @Post('session-photo')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles('THERAPIST')
+    @UseInterceptors(FileInterceptor('file'))
+    uploadSessionPhoto(@UploadedFile() file: Express.Multer.File) {
+        if (!file) {
+            throw new BadRequestException('No image file provided');
+        }
+
+        const relativePath = `/uploads/${file.filename}`;
+
+        return {
+            success: true,
+            url: relativePath,
+            filename: file.filename,
+            size: file.size,
+        };
+    }
 }
+

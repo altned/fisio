@@ -1,7 +1,3 @@
-/**
- * Login Screen
- */
-
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -21,15 +17,20 @@ import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/store/auth';
 import { Ionicons } from '@expo/vector-icons';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import {
+    GoogleSignin,
+    GoogleSigninButton,
+    statusCodes,
+} from '@react-native-google-signin/google-signin';
 
-// Complete auth session for web browser
-WebBrowser.maybeCompleteAuthSession();
-
-// Google OAuth Client IDs
+// Google OAuth Client IDs from Google Cloud Console
 const GOOGLE_WEB_CLIENT_ID = '7503304584-c2j42psehfnj9d9ojsgmts1gcmud3d1j.apps.googleusercontent.com';
-const GOOGLE_ANDROID_CLIENT_ID = '7503304584-n1st5g1mk278lt54d92p12c4rlns7r21.apps.googleusercontent.com';
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: true,
+});
 
 export default function LoginScreen() {
     const colors = Colors.light;
@@ -41,41 +42,42 @@ export default function LoginScreen() {
     const [error, setError] = useState<string | null>(null);
     const [googleLoading, setGoogleLoading] = useState(false);
 
-    // Google OAuth config - expoClientId needed for Expo Go
-    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        expoClientId: GOOGLE_WEB_CLIENT_ID,
-        androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    });
-
-    // Handle Google OAuth response
-    useEffect(() => {
-        if (response?.type === 'success') {
-            const { id_token } = response.params;
-            handleGoogleLogin(id_token);
-        } else if (response?.type === 'error') {
-            setError('Google login gagal');
-            setGoogleLoading(false);
-        }
-    }, [response]);
-
-    const handleGoogleLogin = async (idToken: string) => {
+    const handleGooglePress = async () => {
         try {
             setGoogleLoading(true);
             setError(null);
-            await loginWithGoogle(idToken);
-            // Navigation handled by _layout.tsx
+
+            // Check if Google Play Services are available
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            // Sign in with Google
+            const userInfo = await GoogleSignin.signIn();
+
+            // Get the ID token
+            const idToken = userInfo.data?.idToken;
+
+            if (idToken) {
+                await loginWithGoogle(idToken);
+                // Navigation handled by _layout.tsx
+            } else {
+                setError('Gagal mendapatkan token dari Google');
+            }
         } catch (err: any) {
-            console.error('Google login error:', err);
-            setError(err.message || 'Login dengan Google gagal');
+            console.error('Google Sign-In error:', err);
+
+            if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User cancelled the sign-in
+                console.log('User cancelled Google Sign-In');
+            } else if (err.code === statusCodes.IN_PROGRESS) {
+                setError('Sign-in sedang dalam proses');
+            } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                setError('Google Play Services tidak tersedia');
+            } else {
+                setError(err.message || 'Login dengan Google gagal');
+            }
         } finally {
             setGoogleLoading(false);
         }
-    };
-
-    const handleGooglePress = () => {
-        setGoogleLoading(true);
-        setError(null);
-        promptAsync();
     };
 
     const handleLogin = async () => {
@@ -118,6 +120,12 @@ export default function LoginScreen() {
                             style={styles.logo}
                             resizeMode="contain"
                         />
+                        <Text style={[styles.welcomeText, { color: colors.text }]}>
+                            Selamat Datang!
+                        </Text>
+                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                            Masuk untuk menikmati layanan fisioterapi profesional di rumah
+                        </Text>
                     </View>
 
                     {/* Form */}
@@ -148,6 +156,14 @@ export default function LoginScreen() {
                             leftIcon="lock-closed-outline"
                         />
 
+                        <View style={styles.forgotPasswordContainer}>
+                            <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+                                <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+                                    Lupa Password?
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
                         <Button
                             title="Masuk"
                             onPress={handleLogin}
@@ -163,26 +179,14 @@ export default function LoginScreen() {
                             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                         </View>
 
-                        {/* Google Sign-In Button */}
-                        <TouchableOpacity
-                            style={[styles.googleButton, { borderColor: colors.border }]}
+                        {/* Google Sign-In Button - Official */}
+                        <GoogleSigninButton
+                            style={styles.googleSigninButton}
+                            size={GoogleSigninButton.Size.Wide}
+                            color={GoogleSigninButton.Color.Light}
                             onPress={handleGooglePress}
-                            disabled={!request || googleLoading}
-                            activeOpacity={0.7}
-                        >
-                            {googleLoading ? (
-                                <Text style={[styles.googleButtonText, { color: colors.text }]}>Loading...</Text>
-                            ) : (
-                                <>
-                                    <View style={styles.googleIcon}>
-                                        <Text style={{ fontSize: 18 }}>🔵</Text>
-                                    </View>
-                                    <Text style={[styles.googleButtonText, { color: colors.text }]}>
-                                        Masuk dengan Google
-                                    </Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
+                            disabled={googleLoading}
+                        />
 
                         {/* Register Link */}
                         <View style={styles.registerContainer}>
@@ -199,16 +203,6 @@ export default function LoginScreen() {
                         </View>
                     </View>
 
-                    {/* Demo Credentials */}
-                    <View style={[styles.demoBox, { backgroundColor: colors.infoLight }]}>
-                        <Text style={[styles.demoTitle, { color: colors.info }]}>Demo Credentials</Text>
-                        <Text style={[styles.demoText, { color: colors.textSecondary }]}>
-                            Patient: patient@example.com / patient123
-                        </Text>
-                        <Text style={[styles.demoText, { color: colors.textSecondary }]}>
-                            Therapist: therapist@example.com / therapist123
-                        </Text>
-                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -230,17 +224,23 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: Spacing.xl,
-        paddingTop: Spacing.xl,
+        paddingTop: Spacing.lg,
     },
     logo: {
-        width: 220,
-        height: 90,
-        marginBottom: Spacing.lg,
+        width: 280,
+        height: 110,
+        marginBottom: Spacing.md,
+    },
+    welcomeText: {
+        fontSize: Typography.fontSize.xl,
+        fontWeight: Typography.fontWeight.bold,
+        marginBottom: Spacing.xs,
     },
     subtitle: {
-        fontSize: Typography.fontSize.md,
-        marginTop: Spacing.xs,
+        fontSize: Typography.fontSize.sm,
         textAlign: 'center',
+        paddingHorizontal: Spacing.lg,
+        lineHeight: 20,
     },
     form: {
         marginBottom: Spacing.xl,
@@ -299,21 +299,19 @@ const styles = StyleSheet.create({
         fontSize: Typography.fontSize.sm,
     },
     // Google button styles
-    googleButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-        backgroundColor: '#fff',
+    googleSigninButton: {
+        width: '100%',
+        height: 48,
+        alignSelf: 'center',
     },
-    googleIcon: {
-        marginRight: Spacing.sm,
+    // Forgot password styles
+    forgotPasswordContainer: {
+        alignItems: 'flex-end',
+        marginTop: Spacing.xs,
+        marginBottom: Spacing.md,
     },
-    googleButtonText: {
-        fontSize: Typography.fontSize.md,
+    forgotPasswordText: {
+        fontSize: Typography.fontSize.sm,
         fontWeight: Typography.fontWeight.medium,
     },
 });

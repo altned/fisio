@@ -11,6 +11,7 @@ import api from '../lib/api';
 interface AuthState {
     user: Partial<User> | null;
     token: string | null;
+    refreshToken: string | null;
     isLoggedIn: boolean;
     isLoading: boolean;
     activeRole: UserRole | null;
@@ -30,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
         (set, get) => ({
             user: null,
             token: null,
+            refreshToken: null,
             isLoggedIn: false,
             isLoading: false,
             activeRole: null,
@@ -40,12 +42,14 @@ export const useAuthStore = create<AuthState>()(
                     const response = await api.post<AuthResponse>('/auth/login', { email, password }, { skipAuth: true });
 
                     await api.setToken(response.accessToken);
+                    await api.setRefreshToken(response.refreshToken);
 
                     const role = response.user.role || 'PATIENT';
 
                     set({
                         user: response.user,
                         token: response.accessToken,
+                        refreshToken: response.refreshToken,
                         isLoggedIn: true,
                         activeRole: role,
                         isLoading: false,
@@ -62,12 +66,14 @@ export const useAuthStore = create<AuthState>()(
                     const response = await api.post<AuthResponse>('/auth/google', { idToken }, { skipAuth: true });
 
                     await api.setToken(response.accessToken);
+                    await api.setRefreshToken(response.refreshToken);
 
                     const role = response.user.role || 'PATIENT';
 
                     set({
                         user: response.user,
                         token: response.accessToken,
+                        refreshToken: response.refreshToken,
                         isLoggedIn: true,
                         activeRole: role,
                         isLoading: false,
@@ -84,12 +90,14 @@ export const useAuthStore = create<AuthState>()(
                     const response = await api.post<AuthResponse>('/auth/register', data, { skipAuth: true });
 
                     await api.setToken(response.accessToken);
+                    await api.setRefreshToken(response.refreshToken);
 
                     const role = response.user.role || data.role || 'PATIENT';
 
                     set({
                         user: response.user,
                         token: response.accessToken,
+                        refreshToken: response.refreshToken,
                         isLoggedIn: true,
                         activeRole: role,
                         isLoading: false,
@@ -101,10 +109,18 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: async () => {
+                // Call logout API to invalidate refresh token on server
+                try {
+                    await api.post('/auth/logout', {});
+                } catch (e) {
+                    // Ignore errors - still clear local tokens
+                }
                 await api.setToken(null);
+                await api.setRefreshToken(null);
                 set({
                     user: null,
                     token: null,
+                    refreshToken: null,
                     isLoggedIn: false,
                     activeRole: null,
                 });
@@ -130,6 +146,7 @@ export const useAuthStore = create<AuthState>()(
             partialize: (state) => ({
                 user: state.user,
                 token: state.token,
+                refreshToken: state.refreshToken,
                 isLoggedIn: state.isLoggedIn,
                 activeRole: state.activeRole,
             }),

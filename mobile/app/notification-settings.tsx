@@ -58,48 +58,51 @@ export default function NotificationSettingsScreen() {
     };
 
     const handleToggle = async (value: boolean) => {
-        if (isExpoGo) {
-            Alert.alert(
-                'Expo Go Tidak Didukung',
-                'Push notifications tidak tersedia di Expo Go sejak SDK 53. Untuk menggunakan fitur ini, aplikasi perlu di-build sebagai development build atau production build.',
-                [{ text: 'OK' }]
-            );
-            return;
-        }
-
         setLoading(true);
 
         try {
             if (value) {
-                // Dynamic import to avoid crash in Expo Go
-                const Notifications = await import('expo-notifications');
-                const Device = await import('expo-device');
-
-                if (!Device.isDevice) {
-                    Alert.alert(
-                        'Perangkat Tidak Didukung',
-                        'Push notifications hanya tersedia di perangkat fisik.'
-                    );
+                // Step 1: Dynamic import
+                let Notifications: any;
+                try {
+                    Notifications = await import('expo-notifications');
+                } catch (importError: any) {
+                    Alert.alert('Error', `Step 1: Import gagal - ${importError.message}`);
                     setLoading(false);
                     return;
                 }
 
-                // Configure notification handler
-                Notifications.setNotificationHandler({
-                    handleNotification: async () => ({
-                        shouldShowAlert: true,
-                        shouldPlaySound: true,
-                        shouldSetBadge: true,
-                    }),
-                });
+                // Step 2: Configure notification handler
+                try {
+                    Notifications.setNotificationHandler({
+                        handleNotification: async () => ({
+                            shouldShowAlert: true,
+                            shouldPlaySound: true,
+                            shouldSetBadge: true,
+                            shouldShowBanner: true,
+                            shouldShowList: true,
+                        }),
+                    });
+                } catch (handlerError: any) {
+                    Alert.alert('Error', `Step 2: Handler gagal - ${handlerError.message}`);
+                    setLoading(false);
+                    return;
+                }
 
-                // Request permission
-                const { status: existingStatus } = await Notifications.getPermissionsAsync();
-                let finalStatus = existingStatus;
+                // Step 3: Request permission
+                let finalStatus: string;
+                try {
+                    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+                    finalStatus = existingStatus;
 
-                if (existingStatus !== 'granted') {
-                    const { status } = await Notifications.requestPermissionsAsync();
-                    finalStatus = status;
+                    if (existingStatus !== 'granted') {
+                        const { status } = await Notifications.requestPermissionsAsync();
+                        finalStatus = status;
+                    }
+                } catch (permError: any) {
+                    Alert.alert('Error', `Step 3: Permission gagal - ${permError.message}`);
+                    setLoading(false);
+                    return;
                 }
 
                 if (finalStatus !== 'granted') {
@@ -111,9 +114,27 @@ export default function NotificationSettingsScreen() {
                     return;
                 }
 
-                // Get push token
-                const pushToken = await Notifications.getExpoPushTokenAsync();
-                await updateFcmToken(pushToken.data);
+                // Step 4: Get push token
+                let pushToken: any;
+                try {
+                    pushToken = await Notifications.getExpoPushTokenAsync({
+                        projectId: '1af94808-2620-4766-a074-69f13474b4df'
+                    });
+                } catch (tokenError: any) {
+                    Alert.alert('Error', `Step 4: Token gagal - ${tokenError.message}`);
+                    setLoading(false);
+                    return;
+                }
+
+                // Step 5: Save to server
+                try {
+                    await updateFcmToken(pushToken.data);
+                } catch (saveError: any) {
+                    Alert.alert('Error', `Step 5: Simpan gagal - ${saveError.message}`);
+                    setLoading(false);
+                    return;
+                }
+
                 setIsEnabled(true);
                 Alert.alert('Berhasil', 'Notifikasi berhasil diaktifkan.');
             } else {
@@ -121,9 +142,9 @@ export default function NotificationSettingsScreen() {
                 setIsEnabled(false);
                 Alert.alert('Berhasil', 'Notifikasi berhasil dinonaktifkan.');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Notification error:', error);
-            Alert.alert('Error', 'Gagal mengubah pengaturan notifikasi.');
+            Alert.alert('Error', `Gagal: ${error.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
@@ -140,29 +161,12 @@ export default function NotificationSettingsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Expo Go Warning */}
-                {isExpoGo && (
-                    <Card style={[styles.warningCard, { backgroundColor: colors.warningLight }]}>
-                        <View style={styles.warningRow}>
-                            <Ionicons name="warning" size={24} color={colors.warning} />
-                            <View style={styles.warningTextContainer}>
-                                <Text style={[styles.warningTitle, { color: colors.warning }]}>
-                                    Expo Go Mode
-                                </Text>
-                                <Text style={[styles.warningText, { color: colors.text }]}>
-                                    Push notifications tidak tersedia di Expo Go sejak SDK 53.
-                                    Fitur ini akan berfungsi penuh setelah aplikasi di-build.
-                                </Text>
-                            </View>
-                        </View>
-                    </Card>
-                )}
 
                 {/* Main Toggle */}
                 <Card style={styles.toggleCard}>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleInfo}>
-                            <Ionicons name="notifications" size={24} color={isExpoGo ? colors.textMuted : colors.primary} />
+                            <Ionicons name="notifications" size={24} color={colors.primary} />
                             <View style={styles.toggleText}>
                                 <Text style={[styles.toggleTitle, { color: colors.text }]}>
                                     Push Notifications
@@ -175,7 +179,7 @@ export default function NotificationSettingsScreen() {
                         <Switch
                             value={isEnabled}
                             onValueChange={handleToggle}
-                            disabled={loading || isExpoGo}
+                            disabled={loading}
                             trackColor={{ false: colors.border, true: colors.primaryLight }}
                             thumbColor={isEnabled ? colors.primary : '#f4f3f4'}
                         />

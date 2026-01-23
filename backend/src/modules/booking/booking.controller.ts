@@ -49,7 +49,7 @@ export class BookingController {
   @Post()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT')
-  @Throttle(5, 60)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   create(@Body() body: any, @Request() req: any): Promise<Booking> {
     return this.bookingService.createBooking({
       ...body,
@@ -65,7 +65,7 @@ export class BookingController {
   @Post('accept')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('THERAPIST')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   accept(@Body() body: RespondBookingDto) {
     return this.bookingService.acceptBooking(body);
   }
@@ -73,7 +73,7 @@ export class BookingController {
   @Post('decline')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('THERAPIST')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   decline(@Body() body: RespondBookingDto) {
     return this.bookingService.declineBooking(body);
   }

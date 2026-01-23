@@ -28,13 +28,13 @@ export class TherapistController {
   @UseGuards(JwtGuard)
   @Get('profile')
   getMyProfile(@Request() req: any) {
-    return this.therapistService.getMyProfile(req.user.userId);
+    return this.therapistService.getMyProfile(req.user.id);
   }
 
   @UseGuards(JwtGuard)
   @Patch('profile')
   updateProfile(@Request() req: any, @Body() dto: UpdateTherapistProfileDto) {
-    return this.therapistService.updateProfile(req.user.userId, dto);
+    return this.therapistService.updateProfile(req.user.id, dto);
   }
 
   @Get(':id')

@@ -1,27 +1,52 @@
-version: '3.9'
+# Docker Compose for Fisioku Backend Production
+version: '3.8'
 
 services:
-  db:
-    image: postgres:14
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fisioku-backend
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: fisio
-      POSTGRES_USER: fisio
-      POSTGRES_PASSWORD: fisio
     ports:
-      - '5432:5432'
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
+      - MIDTRANS_IS_PRODUCTION=${MIDTRANS_IS_PRODUCTION}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - REDIS_URL=${REDIS_URL}
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ./uploads:/app/uploads
+    networks:
+      - fisioku-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: fisioku-redis
     restart: unless-stopped
     ports:
-      - '6379:6379'
-    command: ['redis-server', '--appendonly', 'yes']
+      - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis-data:/data
+    networks:
+      - fisioku-network
+    command: redis-server --appendonly yes
+
+networks:
+  fisioku-network:
+    driver: bridge
 
 volumes:
-  db_data:
-  redis_data:
+  redis-data:

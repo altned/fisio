@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSettingsStore } from '../../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
 import { useRequireAuth } from '../../lib/useRequireAuth';
 
@@ -16,7 +16,7 @@ type AdminLog = {
 };
 
 export default function LogsPage() {
-    const { apiBaseUrl, adminToken, hydrate } = useSettingsStore();
+    const { adminToken, hydrate } = useSettingsStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [logs, setLogs] = useState<AdminLog[]>([]);
@@ -27,7 +27,7 @@ export default function LogsPage() {
     useEffect(() => { hydrate(); }, [hydrate]);
 
     const loadLogs = useCallback(async () => {
-        if (!apiBaseUrl || !adminToken) return;
+        if (!API_BASE_URL || !adminToken) return;
         setLoading(true);
         setError(null);
 
@@ -38,7 +38,7 @@ export default function LogsPage() {
             if (actionFilter) params.set('action', actionFilter);
 
             const res = await apiFetch<{ data: AdminLog[]; total: number }>(
-                apiBaseUrl,
+                API_BASE_URL,
                 `/admin/logs?${params.toString()}`,
                 { tokenOverride: adminToken }
             );
@@ -49,11 +49,11 @@ export default function LogsPage() {
         } finally {
             setLoading(false);
         }
-    }, [apiBaseUrl, adminToken, page, actionFilter]);
+    }, [adminToken, page, actionFilter]);
 
     useEffect(() => {
-        if (apiBaseUrl && adminToken) loadLogs();
-    }, [apiBaseUrl, adminToken, loadLogs]);
+        if (API_BASE_URL && adminToken) loadLogs();
+    }, [adminToken, loadLogs]);
 
     if (!ready) return null;
 

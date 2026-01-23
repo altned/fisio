@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
+    Platform,
 } from 'react-native';
 import MapView, { Marker, UrlTile, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -51,6 +52,8 @@ export function MapPicker({
     const [address, setAddress] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
+    // Enable map by default - OSM tiles work without API key
+    const [mapError, setMapError] = useState(false);
 
     // Get current location on mount
     useEffect(() => {
@@ -163,46 +166,78 @@ export function MapPicker({
 
                 {/* Map */}
                 <View style={styles.mapContainer}>
-                    <MapView
-                        ref={mapRef}
-                        style={styles.map}
-                        initialRegion={region}
-                        onPress={handleMapPress}
-                        showsUserLocation
-                        showsMyLocationButton={false}
-                    >
-                        {/* Stadia Maps Tiles - Free and permissive */}
-                        <UrlTile
-                            urlTemplate="https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}.png"
-                            maximumZ={19}
-                            flipY={false}
-                        />
+                    {mapError ? (
+                        <View style={styles.mapErrorContainer}>
+                            <Ionicons name="location-outline" size={64} color="#2196F3" />
+                            <Text style={styles.mapErrorText}>Pilih Lokasi Anda</Text>
+                            <Text style={styles.mapErrorSubtext}>
+                                Gunakan lokasi GPS Anda saat ini
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.getLocationButton}
+                                onPress={getCurrentLocation}
+                                disabled={isGettingLocation}
+                            >
+                                {isGettingLocation ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="locate" size={20} color="#fff" />
+                                        <Text style={styles.getLocationButtonText}>
+                                            Gunakan Lokasi Saya
+                                        </Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <MapView
+                            ref={mapRef}
+                            style={styles.map}
+                            initialRegion={region}
+                            onPress={handleMapPress}
+                            showsUserLocation
+                            showsMyLocationButton={false}
+                            mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+                            onMapReady={() => setMapError(false)}
+                        >
+                            {/* Stadia Maps Tiles - Free and permissive */}
+                            <UrlTile
+                                urlTemplate="https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}.png"
+                                maximumZ={19}
+                                flipY={false}
+                            />
 
-                        {/* Selected Location Marker */}
-                        <Marker
-                            coordinate={markerPosition}
-                            draggable
-                            onDragEnd={(e) => setMarkerPosition(e.nativeEvent.coordinate)}
-                        />
-                    </MapView>
+                            {/* Selected Location Marker */}
+                            <Marker
+                                coordinate={markerPosition}
+                                draggable
+                                onDragEnd={(e) => setMarkerPosition(e.nativeEvent.coordinate)}
+                            />
+                        </MapView>
+                    )}
 
                     {/* Current Location Button */}
-                    <TouchableOpacity
-                        style={styles.currentLocationButton}
-                        onPress={getCurrentLocation}
-                        disabled={isGettingLocation}
-                    >
-                        {isGettingLocation ? (
-                            <ActivityIndicator size="small" color="#2196F3" />
-                        ) : (
-                            <Ionicons name="locate" size={24} color="#2196F3" />
-                        )}
-                    </TouchableOpacity>
+                    {!mapError && (
+                        <TouchableOpacity
+                            style={styles.currentLocationButton}
+                            onPress={getCurrentLocation}
+                            disabled={isGettingLocation}
+                        >
+                            {isGettingLocation ? (
+                                <ActivityIndicator size="small" color="#2196F3" />
+                            ) : (
+                                <Ionicons name="locate" size={24} color="#2196F3" />
+                            )}
+                        </TouchableOpacity>
+                    )}
 
                     {/* Map Hint */}
                     <View style={styles.mapHint}>
                         <Ionicons name="information-circle" size={16} color="#6B7280" />
-                        <Text style={styles.mapHintText}>Tap atau drag marker untuk memilih lokasi</Text>
+                        <Text style={styles.mapHintText}>
+                            {mapError ? 'Gunakan lokasi saat ini' : 'Tap atau drag marker untuk memilih lokasi'}
+                        </Text>
                     </View>
                 </View>
 
@@ -350,6 +385,41 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
+    },
+    mapErrorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+    },
+    mapErrorText: {
+        fontSize: Typography.fontSize.lg,
+        fontWeight: Typography.fontWeight.semibold,
+        color: '#6B7280',
+        marginTop: Spacing.md,
+    },
+    mapErrorSubtext: {
+        fontSize: Typography.fontSize.sm,
+        color: '#9CA3AF',
+        marginTop: Spacing.xs,
+        textAlign: 'center',
+        paddingHorizontal: Spacing.lg,
+    },
+    getLocationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2196F3',
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.xl,
+        borderRadius: BorderRadius.lg,
+        marginTop: Spacing.xl,
+    },
+    getLocationButtonText: {
+        color: '#fff',
+        fontSize: Typography.fontSize.md,
+        fontWeight: Typography.fontWeight.semibold,
+        marginLeft: Spacing.sm,
     },
 });
 

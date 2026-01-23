@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.18.207:3000';
 const STORAGE_KEY_TOKEN = '@fisioku_token';
+const STORAGE_KEY_REFRESH_TOKEN = '@fisioku_refresh_token';
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -21,6 +22,9 @@ interface ApiError {
 
 class ApiClient {
     private token: string | null = null;
+    private refreshToken: string | null = null;
+    private isRefreshing: boolean = false;
+    private refreshPromise: Promise<boolean> | null = null;
     private baseUrl: string;
 
     constructor(baseUrl: string = API_BASE_URL) {
@@ -35,6 +39,7 @@ class ApiClient {
         }
         try {
             this.token = await AsyncStorage.getItem(STORAGE_KEY_TOKEN);
+            this.refreshToken = await AsyncStorage.getItem(STORAGE_KEY_REFRESH_TOKEN);
         } catch (e) {
             console.warn('Failed to load token:', e);
         }
@@ -55,6 +60,72 @@ class ApiClient {
         } catch (e) {
             console.warn('Failed to save token:', e);
         }
+    }
+
+    async setRefreshToken(refreshToken: string | null) {
+        this.refreshToken = refreshToken;
+        if (typeof window === 'undefined') {
+            return;
+        }
+        try {
+            if (refreshToken) {
+                await AsyncStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, refreshToken);
+            } else {
+                await AsyncStorage.removeItem(STORAGE_KEY_REFRESH_TOKEN);
+            }
+        } catch (e) {
+            console.warn('Failed to save refresh token:', e);
+        }
+    }
+
+    getRefreshToken() {
+        return this.refreshToken;
+    }
+
+    /**
+     * Attempt to refresh the access token using refresh token
+     */
+    private async attemptRefresh(): Promise<boolean> {
+        if (!this.refreshToken) {
+            return false;
+        }
+
+        // If already refreshing, wait for that promise
+        if (this.isRefreshing && this.refreshPromise) {
+            return this.refreshPromise;
+        }
+
+        this.isRefreshing = true;
+        this.refreshPromise = (async () => {
+            try {
+                const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: this.refreshToken }),
+                });
+
+                if (!response.ok) {
+                    // Refresh failed - clear all tokens
+                    await this.setToken(null);
+                    await this.setRefreshToken(null);
+                    return false;
+                }
+
+                const data = await response.json();
+                await this.setToken(data.accessToken);
+                return true;
+            } catch (e) {
+                console.warn('Token refresh failed:', e);
+                await this.setToken(null);
+                await this.setRefreshToken(null);
+                return false;
+            } finally {
+                this.isRefreshing = false;
+                this.refreshPromise = null;
+            }
+        })();
+
+        return this.refreshPromise;
     }
 
     getToken() {
@@ -95,9 +166,17 @@ class ApiClient {
                 };
 
                 // Handle specific status codes
-                if (response.status === 401) {
-                    // Token expired or invalid
+                if (response.status === 401 && !skipAuth && this.refreshToken) {
+                    // Try to refresh token
+                    const refreshed = await this.attemptRefresh();
+                    if (refreshed) {
+                        // Retry the original request with new token
+                        return this.request<T>(endpoint, options);
+                    }
+                    error.message = 'Sesi berakhir, silakan login kembali';
+                } else if (response.status === 401) {
                     await this.setToken(null);
+                    await this.setRefreshToken(null);
                     error.message = 'Sesi berakhir, silakan login kembali';
                 } else if (response.status === 403) {
                     error.message = 'Anda tidak memiliki akses';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSettingsStore } from '../../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../../store/settings';
 import { apiFetch } from '../../lib/api';
 import { useRequireAuth } from '../../lib/useRequireAuth';
 
@@ -37,12 +37,12 @@ const jobs = [
 ];
 
 export default function OpsPage() {
-    const { apiBaseUrl, adminToken } = useSettingsStore();
+    const { adminToken } = useSettingsStore();
     const [jobResults, setJobResults] = useState<Record<string, JobResult>>({});
     const { ready } = useRequireAuth();
 
     const runJob = async (jobId: string, endpoint: string, name: string) => {
-        if (!apiBaseUrl || !adminToken) {
+        if (!API_BASE_URL || !adminToken) {
             setJobResults((prev) => ({
                 ...prev,
                 [jobId]: { name, status: 'error', message: 'API not configured' },
@@ -57,7 +57,7 @@ export default function OpsPage() {
 
         try {
             const res = await apiFetch<{ message?: string; affected?: number }>(
-                apiBaseUrl,
+                API_BASE_URL,
                 endpoint,
                 { method: 'POST', tokenOverride: adminToken }
             );

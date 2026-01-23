@@ -46,8 +46,8 @@ export class UpdateProfileDto {
     gender?: 'MALE' | 'FEMALE';
 
     @IsOptional()
-    @IsString()
-    bloodType?: string; // e.g. A+, B-, AB+, O-
+    @IsIn(['A', 'B', 'AB', 'O', null])
+    bloodType?: 'A' | 'B' | 'AB' | 'O' | null;
 
     @IsOptional()
     @IsString()

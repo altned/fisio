@@ -82,7 +82,7 @@ export default function SessionCompleteScreen() {
                 name: filename,
             } as any);
 
-            const response = await api.upload<{ url?: string; relativePath?: string }>('/upload/promo', formData);
+            const response = await api.upload<{ url?: string; relativePath?: string }>('/upload/session-photo', formData);
             return response.url || response.relativePath || null;
         } catch (error) {
             console.error('Photo upload failed:', error);

@@ -13,7 +13,7 @@ export class PaymentController {
   @Post('initiate')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   initiate(@Body() body: InitiatePaymentDto) {
     return this.paymentService.initiatePayment(body);
   }
@@ -21,7 +21,7 @@ export class PaymentController {
   @Post('proof')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   uploadProof(@Body() body: UploadProofDto) {
     return this.paymentService.uploadProof(body);
   }
@@ -29,7 +29,7 @@ export class PaymentController {
   @Post('confirm')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN')
-  @Throttle(5, 60)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   confirm(@Body() body: ConfirmPaymentDto) {
     return this.paymentService.confirmPayment(body);
   }

@@ -33,6 +33,8 @@ export interface User {
 
 export interface AuthResponse {
     accessToken: string;
+    refreshToken: string;
+    expiresIn: number; // in seconds
     user: Partial<User>;
 }
 

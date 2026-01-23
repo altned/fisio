@@ -76,6 +76,17 @@ export class User {
   @Column({ type: 'integer', nullable: true })
   weight!: number | null; // in kg
 
+  // Password reset fields
+  @Column({ name: 'reset_token', type: 'varchar', length: 10, nullable: true })
+  resetToken!: string | null;
+
+  @Column({ name: 'reset_token_expiry', type: 'timestamp with time zone', nullable: true })
+  resetTokenExpiry!: Date | null;
+
+  // Refresh token for JWT refresh mechanism
+  @Column({ name: 'refresh_token', type: 'varchar', length: 500, nullable: true })
+  refreshToken!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt!: Date;
 

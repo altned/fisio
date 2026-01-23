@@ -1,15 +1,22 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, Redirect } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Image, StyleSheet, Dimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS
+} from 'react-native-reanimated';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuthStore } from '@/store/auth';
 import { Colors } from '@/constants/Colors';
+import { OnboardingProvider, useOnboarding } from '@/contexts/OnboardingContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -20,33 +27,32 @@ export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
-const ONBOARDING_COMPLETED_KEY = '@fisioku_onboarding_completed';
+const { width, height } = Dimensions.get('window');
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontError) throw fontError;
+  }, [fontError]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
+  // Don't render anything until fonts are loaded
+  if (!fontsLoaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <OnboardingProvider>
+      <RootLayoutNav />
+    </OnboardingProvider>
+  );
 }
 
 function RootLayoutNav() {
@@ -54,59 +60,72 @@ function RootLayoutNav() {
   const { isLoggedIn } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
-  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Check onboarding status on mount and when segments change
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        const completed = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
-        setHasCompletedOnboarding(completed === 'true');
-      } catch (e) {
-        console.warn('Failed to check onboarding status:', e);
-        setHasCompletedOnboarding(true); // Default to completed to not block users
-      } finally {
-        setIsCheckingOnboarding(false);
-      }
-    };
-    checkOnboarding();
-  }, [segments]); // Re-check when segments change (e.g., after completing onboarding)
+  // Use shared context for onboarding state
+  const { isLoading, hasCompletedOnboarding } = useOnboarding();
 
+  // Splash screen animation
+  const [showSplash, setShowSplash] = useState(true);
+  const splashOpacity = useSharedValue(1);
+
+  const hideSplash = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  // Combined ready state
+  const isReady = !isLoading;
+
+  // Handle Splash Screen: Only hide when context is ready
   useEffect(() => {
-    if (isCheckingOnboarding) return;
+    if (isReady) {
+      SplashScreen.hideAsync();
+
+      setTimeout(() => {
+        splashOpacity.value = withTiming(0, { duration: 800 }, (finished) => {
+          if (finished) runOnJS(hideSplash)();
+        });
+      }, 500);
+    }
+  }, [isReady]);
+
+  const animatedSplashStyle = useAnimatedStyle(() => ({
+    opacity: splashOpacity.value,
+  }));
+
+  // NAVIGATION GUARD - Uses shared context state
+  useEffect(() => {
+    if (!isReady) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
     const inTabs = segments[0] === '(tabs)';
-    // Protected routes that logged-in users can access outside of tabs
-    const inProtectedRoute = ['chat', 'session-complete', 'review', 'profile-edit', 'notification-settings'].includes(segments[0] as string);
 
-    // First-time users go to onboarding
-    if (!hasCompletedOnboarding && !inOnboarding) {
-      router.replace('/onboarding');
+    console.log('[Guard] State:', { hasCompletedOnboarding, isLoggedIn, segment: segments[0] });
+
+    // 1. If NOT completed onboarding -> Force Onboarding
+    if (!hasCompletedOnboarding) {
+      if (!inOnboarding) {
+        console.log('[Guard] Redirecting to Onboarding');
+        router.replace('/onboarding');
+      }
       return;
     }
 
-    // Skip if still in onboarding
-    if (inOnboarding) return;
-
-    // After onboarding, handle auth redirects
-    if (hasCompletedOnboarding) {
-      // If logged in and in protected route or tabs, allow access
-      if (isLoggedIn && (inTabs || inProtectedRoute)) {
-        return; // Already in a valid location
-      }
-
-      if (isLoggedIn && !inTabs && !inProtectedRoute) {
-        // Logged in but in unknown route -> go to tabs
-        router.replace('/(tabs)');
-      } else if (!isLoggedIn && !inAuthGroup) {
-        // Not logged in and not in auth -> go to login
-        router.replace('/(auth)/login');
-      }
+    // 2. If completed onboarding but still in onboarding screen -> Leave
+    if (inOnboarding && hasCompletedOnboarding) {
+      console.log('[Guard] Leaving Onboarding (Completed)');
+      router.replace(isLoggedIn ? '/(tabs)' : '/(auth)/login');
+      return;
     }
-  }, [isLoggedIn, segments, isCheckingOnboarding, hasCompletedOnboarding]);
+
+    // 3. Auth Logic
+    if (inAuthGroup && isLoggedIn) {
+      router.replace('/(tabs)');
+    } else if (!isLoggedIn && !inAuthGroup && !inOnboarding) {
+      router.replace('/(auth)/login');
+    }
+
+  }, [isReady, hasCompletedOnboarding, isLoggedIn, segments]);
 
   // Custom theme with healthcare colors
   const lightTheme = {
@@ -134,19 +153,43 @@ function RootLayoutNav() {
   };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? darkTheme : lightTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="chat/[bookingId]" />
-        <Stack.Screen name="session-complete" />
-        <Stack.Screen name="review" />
-        <Stack.Screen name="profile-edit" />
-        <Stack.Screen name="notification-settings" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <View style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === 'dark' ? darkTheme : lightTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat/[bookingId]" />
+          <Stack.Screen name="session-complete" />
+          <Stack.Screen name="review" />
+          <Stack.Screen name="profile-edit" />
+          <Stack.Screen name="notification-settings" />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+      {showSplash && (
+        <Animated.View style={[styles.splashContainer, animatedSplashStyle]}>
+          <Image
+            source={require('../assets/images/splash.png')}
+            style={styles.splashImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
+const styles = StyleSheet.create({
+  splashContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  splashImage: {
+    width: width * 0.85,
+    height: height * 0.5,
+  },
+});

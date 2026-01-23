@@ -56,6 +56,20 @@ export default function EditProfileScreen() {
     const [weight, setWeight] = useState(user?.weight?.toString() || '');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
+    // Therapist-specific profile fields
+    const [bidang, setBidang] = useState('');
+    const [strNumber, setStrNumber] = useState('');
+    const [strExpiryDate, setStrExpiryDate] = useState<Date | null>(null);
+    const [experienceYears, setExperienceYears] = useState('');
+    const [bio, setBio] = useState('');
+    const [education, setEducation] = useState('');
+    const [certifications, setCertifications] = useState('');
+    const [city, setCity] = useState('');
+    const [showStrDatePicker, setShowStrDatePicker] = useState(false);
+
+    // Determine if user is therapist
+    const isTherapist = user?.role === 'THERAPIST';
+
     // Fetch latest profile data on mount
     useEffect(() => {
         fetchProfile();
@@ -63,6 +77,7 @@ export default function EditProfileScreen() {
 
     const fetchProfile = async () => {
         try {
+            // Fetch basic user profile
             const response = await fetch(`${API_BASE_URL}/users/profile`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -76,7 +91,7 @@ export default function EditProfileScreen() {
                 setProfilePhotoUrl(data.profilePhotoUrl || '');
                 setLatitude(data.latitude || null);
                 setLongitude(data.longitude || null);
-                // Extended fields
+                // Extended fields for patient
                 setBirthDate(data.birthDate ? new Date(data.birthDate) : null);
                 setGender(data.gender || null);
                 setBloodType(data.bloodType || null);
@@ -86,6 +101,38 @@ export default function EditProfileScreen() {
                 setEmergencyContactPhone(data.emergencyContactPhone || '');
                 setHeight(data.height?.toString() || '');
                 setWeight(data.weight?.toString() || '');
+            }
+
+            // Fetch therapist profile if user is therapist
+            if (user?.role === 'THERAPIST') {
+                const therapistResponse = await fetch(`${API_BASE_URL}/therapists/profile`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+                if (therapistResponse.ok) {
+                    const therapistData = await therapistResponse.json();
+                    setBidang(therapistData.bidang || '');
+                    setStrNumber(therapistData.strNumber || '');
+                    setStrExpiryDate(therapistData.strExpiryDate ? new Date(therapistData.strExpiryDate) : null);
+                    setExperienceYears(therapistData.experienceYears?.toString() || '');
+                    setBio(therapistData.bio || '');
+                    setEducation(therapistData.education || '');
+                    setCertifications(therapistData.certifications || '');
+                    setCity(therapistData.city || '');
+                    setAddress(therapistData.address || '');
+                    setPhoneNumber(therapistData.phone || '');
+                    // Use therapist photo if available
+                    if (therapistData.photoUrl) {
+                        setProfilePhotoUrl(therapistData.photoUrl);
+                    }
+                    // Use therapist coordinates
+                    if (therapistData.latitude) setLatitude(therapistData.latitude);
+                    if (therapistData.longitude) setLongitude(therapistData.longitude);
+                    // Use therapist birth date and gender
+                    if (therapistData.birthDate) setBirthDate(new Date(therapistData.birthDate));
+                    if (therapistData.gender) setGender(therapistData.gender);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch profile:', error);
@@ -149,111 +196,123 @@ export default function EditProfileScreen() {
         setLoading(true);
 
         try {
-            const payload: {
-                fullName?: string;
-                phoneNumber?: string;
-                address?: string;
-                profilePhotoUrl?: string;
-                password?: string;
-                latitude?: number;
-                longitude?: number;
-                birthDate?: string;
-                gender?: 'MALE' | 'FEMALE';
-                bloodType?: string;
-                allergies?: string;
-                medicalHistory?: string;
-                emergencyContactName?: string;
-                emergencyContactPhone?: string;
-                height?: number;
-                weight?: number;
-            } = {};
+            // Update user profile (for all users)
+            const userPayload: any = {};
 
             if (fullName.trim() !== user?.fullName) {
-                payload.fullName = fullName.trim();
-            }
-
-            if (phoneNumber.trim() !== user?.phoneNumber) {
-                payload.phoneNumber = phoneNumber.trim();
-            }
-
-            if (address.trim() !== user?.address) {
-                payload.address = address.trim();
-            }
-
-            if (profilePhotoUrl !== user?.profilePhotoUrl) {
-                payload.profilePhotoUrl = profilePhotoUrl;
-            }
-            // Add coordinates if available
-            if (latitude !== null) {
-                payload.latitude = latitude;
-            }
-            if (longitude !== null) {
-                payload.longitude = longitude;
-            }
-
-            // Add extended patient profile fields
-            if (birthDate) {
-                payload.birthDate = birthDate.toISOString().split('T')[0];
-            }
-            if (gender) {
-                payload.gender = gender;
-            }
-            if (bloodType) {
-                payload.bloodType = bloodType;
-            }
-            if (allergies.trim()) {
-                payload.allergies = allergies.trim();
-            }
-            if (medicalHistory.trim()) {
-                payload.medicalHistory = medicalHistory.trim();
-            }
-            if (emergencyContactName.trim()) {
-                payload.emergencyContactName = emergencyContactName.trim();
-            }
-            if (emergencyContactPhone.trim()) {
-                payload.emergencyContactPhone = emergencyContactPhone.trim();
-            }
-            if (height && !isNaN(parseInt(height))) {
-                payload.height = parseInt(height);
-            }
-            if (weight && !isNaN(parseInt(weight))) {
-                payload.weight = parseInt(weight);
+                userPayload.fullName = fullName.trim();
             }
 
             if (password) {
-                payload.password = password;
+                userPayload.password = password;
             }
 
-            if (Object.keys(payload).length === 0) {
-                Alert.alert('Info', 'Tidak ada perubahan');
-                setLoading(false);
-                return;
+            // Only update user profile if there are changes
+            if (Object.keys(userPayload).length > 0) {
+                const userResponse = await fetch(`${API_BASE_URL}/users/profile`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(userPayload),
+                });
+
+                if (!userResponse.ok) {
+                    const error = await userResponse.json();
+                    throw new Error(error.message || 'Gagal update profil');
+                }
+
+                const updatedUser = await userResponse.json();
+                updateUser({
+                    fullName: updatedUser.fullName,
+                    isProfileComplete: updatedUser.isProfileComplete,
+                });
             }
 
-            const response = await fetch(`${API_BASE_URL}/users/profile`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
+            // Update therapist profile if user is therapist
+            if (isTherapist) {
+                const therapistPayload: any = {
+                    phone: phoneNumber.trim(),
+                    address: address.trim(),
+                    city: city.trim(),
+                    bidang: bidang.trim(),
+                    strNumber: strNumber.trim(),
+                    experienceYears: experienceYears ? parseInt(experienceYears) : 0,
+                    bio: bio.trim(),
+                    education: education.trim(),
+                    certifications: certifications.trim(),
+                    photoUrl: profilePhotoUrl,
+                };
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Gagal update profil');
+                if (latitude !== null) therapistPayload.latitude = latitude;
+                if (longitude !== null) therapistPayload.longitude = longitude;
+                if (birthDate) therapistPayload.birthDate = birthDate.toISOString().split('T')[0];
+                if (gender) therapistPayload.gender = gender;
+                if (strExpiryDate) therapistPayload.strExpiryDate = strExpiryDate.toISOString().split('T')[0];
+
+                const therapistResponse = await fetch(`${API_BASE_URL}/therapists/profile`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(therapistPayload),
+                });
+
+                if (!therapistResponse.ok) {
+                    const error = await therapistResponse.json();
+                    throw new Error(error.message || 'Gagal update profil terapis');
+                }
+            } else {
+                // Update patient profile fields
+                const patientPayload: any = {};
+
+                if (phoneNumber.trim() !== user?.phoneNumber) {
+                    patientPayload.phoneNumber = phoneNumber.trim();
+                }
+                if (address.trim() !== user?.address) {
+                    patientPayload.address = address.trim();
+                }
+                if (profilePhotoUrl !== user?.profilePhotoUrl) {
+                    patientPayload.profilePhotoUrl = profilePhotoUrl;
+                }
+                if (latitude !== null) patientPayload.latitude = latitude;
+                if (longitude !== null) patientPayload.longitude = longitude;
+                if (birthDate) patientPayload.birthDate = birthDate.toISOString().split('T')[0];
+                if (gender) patientPayload.gender = gender;
+                if (bloodType) patientPayload.bloodType = bloodType;
+                if (allergies.trim()) patientPayload.allergies = allergies.trim();
+                if (medicalHistory.trim()) patientPayload.medicalHistory = medicalHistory.trim();
+                if (emergencyContactName.trim()) patientPayload.emergencyContactName = emergencyContactName.trim();
+                if (emergencyContactPhone.trim()) patientPayload.emergencyContactPhone = emergencyContactPhone.trim();
+                if (height && !isNaN(parseInt(height))) patientPayload.height = parseInt(height);
+                if (weight && !isNaN(parseInt(weight))) patientPayload.weight = parseInt(weight);
+
+                if (Object.keys(patientPayload).length > 0) {
+                    const patientResponse = await fetch(`${API_BASE_URL}/users/profile`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(patientPayload),
+                    });
+
+                    if (!patientResponse.ok) {
+                        const error = await patientResponse.json();
+                        throw new Error(error.message || 'Gagal update profil');
+                    }
+
+                    const updatedPatient = await patientResponse.json();
+                    updateUser({
+                        phoneNumber: updatedPatient.phoneNumber,
+                        address: updatedPatient.address,
+                        profilePhotoUrl: updatedPatient.profilePhotoUrl,
+                        isProfileComplete: updatedPatient.isProfileComplete,
+                    });
+                }
             }
-
-            const updatedUser = await response.json();
-
-            // Update local user state
-            updateUser({
-                fullName: updatedUser.fullName,
-                phoneNumber: updatedUser.phoneNumber,
-                address: updatedUser.address,
-                profilePhotoUrl: updatedUser.profilePhotoUrl,
-                isProfileComplete: updatedUser.isProfileComplete,
-            });
 
             Alert.alert('Berhasil', 'Profil berhasil diperbarui', [
                 { text: 'OK', onPress: () => router.back() }
@@ -429,9 +488,182 @@ export default function EditProfileScreen() {
 
                 <View style={styles.divider} />
 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Data Kesehatan
-                </Text>
+                {/* THERAPIST FIELDS */}
+                {isTherapist && (
+                    <>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                            Data Profesional
+                        </Text>
+
+                        {/* Bidang Keahlian */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Bidang Keahlian *</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={bidang}
+                                onChangeText={setBidang}
+                                placeholder="Contoh: Fisioterapi Muskuloskeletal"
+                                placeholderTextColor={colors.textMuted}
+                            />
+                        </View>
+
+                        {/* Nomor STR */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Nomor STR</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={strNumber}
+                                onChangeText={setStrNumber}
+                                placeholder="Surat Tanda Registrasi"
+                                placeholderTextColor={colors.textMuted}
+                            />
+                        </View>
+
+                        {/* STR Expiry Date */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Masa Berlaku STR</Text>
+                            <TouchableOpacity
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    borderColor: colors.border,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }]}
+                                onPress={() => setShowStrDatePicker(true)}
+                            >
+                                <Text style={{ color: strExpiryDate ? colors.text : colors.textMuted }}>
+                                    {strExpiryDate
+                                        ? strExpiryDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                                        : 'Pilih tanggal berlaku'
+                                    }
+                                </Text>
+                                <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* STR Date Picker */}
+                        {showStrDatePicker && (
+                            <DateTimePicker
+                                value={strExpiryDate || new Date()}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                minimumDate={new Date()}
+                                onChange={(event, selectedDate) => {
+                                    setShowStrDatePicker(Platform.OS === 'ios');
+                                    if (selectedDate) {
+                                        setStrExpiryDate(selectedDate);
+                                    }
+                                }}
+                            />
+                        )}
+
+                        {/* Experience Years */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Pengalaman (tahun)</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={experienceYears}
+                                onChangeText={setExperienceYears}
+                                placeholder="Contoh: 5"
+                                placeholderTextColor={colors.textMuted}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                            />
+                        </View>
+
+                        {/* Education */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Pendidikan</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={education}
+                                onChangeText={setEducation}
+                                placeholder="Contoh: S1 Fisioterapi UI"
+                                placeholderTextColor={colors.textMuted}
+                            />
+                        </View>
+
+                        {/* Certifications */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Sertifikasi</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={certifications}
+                                onChangeText={setCertifications}
+                                placeholder="Sertifikasi yang dimiliki (pisahkan dengan koma)"
+                                placeholderTextColor={colors.textMuted}
+                                multiline
+                                numberOfLines={2}
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        {/* City */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Kota</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={city}
+                                onChangeText={setCity}
+                                placeholder="Kota tempat praktik"
+                                placeholderTextColor={colors.textMuted}
+                            />
+                        </View>
+
+                        {/* Bio */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Bio / Deskripsi</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={bio}
+                                onChangeText={setBio}
+                                placeholder="Ceritakan tentang diri Anda dan layanan yang ditawarkan"
+                                placeholderTextColor={colors.textMuted}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <View style={styles.divider} />
+                    </>
+                )}
+
+                {/* PATIENT HEALTH FIELDS - Only for non-therapist */}
+                {!isTherapist && (
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                        Data Kesehatan
+                    </Text>
+                )}
 
                 {/* Birth Date */}
                 <View style={styles.formGroup}>
@@ -514,142 +746,146 @@ export default function EditProfileScreen() {
                     </View>
                 </View>
 
-                {/* Blood Type - Text Input */}
-                <View style={styles.formGroup}>
-                    <Text style={[styles.label, { color: colors.text }]}>Golongan Darah</Text>
-                    <TextInput
-                        style={[styles.input, {
-                            backgroundColor: colors.card,
-                            color: colors.text,
-                            borderColor: colors.border
-                        }]}
-                        value={bloodType || ''}
-                        onChangeText={(text) => setBloodType(text as any)}
-                        placeholder="Contoh: A+, B-, AB+, O-"
-                        placeholderTextColor={colors.textMuted}
-                        autoCapitalize="characters"
-                        maxLength={5}
-                    />
-                    <Text style={[styles.hint, { color: colors.textMuted }]}>
-                        Masukkan golongan darah lengkap dengan rhesus (A+, B-, dll)
-                    </Text>
-                </View>
+                {/* Blood Type - Text Input - PATIENT ONLY */}
+                {!isTherapist && (
+                    <>
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Golongan Darah</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={bloodType || ''}
+                                onChangeText={(text) => setBloodType(text as any)}
+                                placeholder="Contoh: A+, B-, AB+, O-"
+                                placeholderTextColor={colors.textMuted}
+                                autoCapitalize="characters"
+                                maxLength={5}
+                            />
+                            <Text style={[styles.hint, { color: colors.textMuted }]}>
+                                Masukkan golongan darah lengkap dengan rhesus (A+, B-, dll)
+                            </Text>
+                        </View>
 
-                {/* Height & Weight */}
-                <View style={styles.rowGroup}>
-                    <View style={[styles.formGroup, { flex: 1, marginRight: Spacing.sm }]}>
-                        <Text style={[styles.label, { color: colors.text }]}>Tinggi (cm)</Text>
-                        <TextInput
-                            style={[styles.input, {
-                                backgroundColor: colors.card,
-                                color: colors.text,
-                                borderColor: colors.border
-                            }]}
-                            value={height}
-                            onChangeText={setHeight}
-                            placeholder="170"
-                            placeholderTextColor={colors.textMuted}
-                            keyboardType="number-pad"
-                            maxLength={3}
-                        />
-                    </View>
-                    <View style={[styles.formGroup, { flex: 1, marginLeft: Spacing.sm }]}>
-                        <Text style={[styles.label, { color: colors.text }]}>Berat (kg)</Text>
-                        <TextInput
-                            style={[styles.input, {
-                                backgroundColor: colors.card,
-                                color: colors.text,
-                                borderColor: colors.border
-                            }]}
-                            value={weight}
-                            onChangeText={setWeight}
-                            placeholder="65"
-                            placeholderTextColor={colors.textMuted}
-                            keyboardType="number-pad"
-                            maxLength={3}
-                        />
-                    </View>
-                </View>
+                        {/* Height & Weight */}
+                        <View style={styles.rowGroup}>
+                            <View style={[styles.formGroup, { flex: 1, marginRight: Spacing.sm }]}>
+                                <Text style={[styles.label, { color: colors.text }]}>Tinggi (cm)</Text>
+                                <TextInput
+                                    style={[styles.input, {
+                                        backgroundColor: colors.card,
+                                        color: colors.text,
+                                        borderColor: colors.border
+                                    }]}
+                                    value={height}
+                                    onChangeText={setHeight}
+                                    placeholder="170"
+                                    placeholderTextColor={colors.textMuted}
+                                    keyboardType="number-pad"
+                                    maxLength={3}
+                                />
+                            </View>
+                            <View style={[styles.formGroup, { flex: 1, marginLeft: Spacing.sm }]}>
+                                <Text style={[styles.label, { color: colors.text }]}>Berat (kg)</Text>
+                                <TextInput
+                                    style={[styles.input, {
+                                        backgroundColor: colors.card,
+                                        color: colors.text,
+                                        borderColor: colors.border
+                                    }]}
+                                    value={weight}
+                                    onChangeText={setWeight}
+                                    placeholder="65"
+                                    placeholderTextColor={colors.textMuted}
+                                    keyboardType="number-pad"
+                                    maxLength={3}
+                                />
+                            </View>
+                        </View>
 
-                {/* Allergies */}
-                <View style={styles.formGroup}>
-                    <Text style={[styles.label, { color: colors.text }]}>Alergi Obat</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea, {
-                            backgroundColor: colors.card,
-                            color: colors.text,
-                            borderColor: colors.border
-                        }]}
-                        value={allergies}
-                        onChangeText={setAllergies}
-                        placeholder="Contoh: Penisilin, Aspirin, dll. Kosongkan jika tidak ada."
-                        placeholderTextColor={colors.textMuted}
-                        multiline
-                        numberOfLines={2}
-                        textAlignVertical="top"
-                    />
-                </View>
+                        {/* Allergies */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Alergi Obat</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={allergies}
+                                onChangeText={setAllergies}
+                                placeholder="Contoh: Penisilin, Aspirin, dll. Kosongkan jika tidak ada."
+                                placeholderTextColor={colors.textMuted}
+                                multiline
+                                numberOfLines={2}
+                                textAlignVertical="top"
+                            />
+                        </View>
 
-                {/* Medical History */}
-                <View style={styles.formGroup}>
-                    <Text style={[styles.label, { color: colors.text }]}>Riwayat Penyakit</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea, {
-                            backgroundColor: colors.card,
-                            color: colors.text,
-                            borderColor: colors.border
-                        }]}
-                        value={medicalHistory}
-                        onChangeText={setMedicalHistory}
-                        placeholder="Contoh: Diabetes, Hipertensi, Asma, dll. Kosongkan jika tidak ada."
-                        placeholderTextColor={colors.textMuted}
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                    />
-                </View>
+                        {/* Medical History */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Riwayat Penyakit</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={medicalHistory}
+                                onChangeText={setMedicalHistory}
+                                placeholder="Contoh: Diabetes, Hipertensi, Asma, dll. Kosongkan jika tidak ada."
+                                placeholderTextColor={colors.textMuted}
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
+                            />
+                        </View>
 
-                <View style={styles.divider} />
+                        <View style={styles.divider} />
 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Kontak Darurat
-                </Text>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                            Kontak Darurat
+                        </Text>
 
-                {/* Emergency Contact Name */}
-                <View style={styles.formGroup}>
-                    <Text style={[styles.label, { color: colors.text }]}>Nama Kontak Darurat</Text>
-                    <TextInput
-                        style={[styles.input, {
-                            backgroundColor: colors.card,
-                            color: colors.text,
-                            borderColor: colors.border
-                        }]}
-                        value={emergencyContactName}
-                        onChangeText={setEmergencyContactName}
-                        placeholder="Nama keluarga/kerabat"
-                        placeholderTextColor={colors.textMuted}
-                    />
-                </View>
+                        {/* Emergency Contact Name */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Nama Kontak Darurat</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={emergencyContactName}
+                                onChangeText={setEmergencyContactName}
+                                placeholder="Nama keluarga/kerabat"
+                                placeholderTextColor={colors.textMuted}
+                            />
+                        </View>
 
-                {/* Emergency Contact Phone */}
-                <View style={styles.formGroup}>
-                    <Text style={[styles.label, { color: colors.text }]}>Telepon Kontak Darurat</Text>
-                    <TextInput
-                        style={[styles.input, {
-                            backgroundColor: colors.card,
-                            color: colors.text,
-                            borderColor: colors.border
-                        }]}
-                        value={emergencyContactPhone}
-                        onChangeText={setEmergencyContactPhone}
-                        placeholder="08123456789"
-                        placeholderTextColor={colors.textMuted}
-                        keyboardType="phone-pad"
-                    />
-                    <Text style={[styles.hint, { color: colors.textMuted }]}>
-                        Dihubungi saat kondisi darurat
-                    </Text>
-                </View>
+                        {/* Emergency Contact Phone */}
+                        <View style={styles.formGroup}>
+                            <Text style={[styles.label, { color: colors.text }]}>Telepon Kontak Darurat</Text>
+                            <TextInput
+                                style={[styles.input, {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: colors.border
+                                }]}
+                                value={emergencyContactPhone}
+                                onChangeText={setEmergencyContactPhone}
+                                placeholder="08123456789"
+                                placeholderTextColor={colors.textMuted}
+                                keyboardType="phone-pad"
+                            />
+                            <Text style={[styles.hint, { color: colors.textMuted }]}>
+                                Dihubungi saat kondisi darurat
+                            </Text>
+                        </View>
+                    </>
+                )}
 
                 <View style={styles.divider} />
 

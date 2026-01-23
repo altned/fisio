@@ -1,5 +1,5 @@
 /**
- * Onboarding Screen - First-time user introduction to Fisioku Prime Care
+ * Onboarding Screen - Simple state-based slides
  */
 
 import React, { useState, useRef } from 'react';
@@ -7,126 +7,93 @@ import {
     View,
     Text,
     StyleSheet,
-    Image,
     Dimensions,
+    Image,
     TouchableOpacity,
-    FlatList,
-    Animated,
+    ImageSourcePropType,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 
 const { width, height } = Dimensions.get('window');
 
-const ONBOARDING_SLIDES = [
+interface OnboardingSlide {
+    id: string;
+    title: string;
+    subtitle: string;
+    image: ImageSourcePropType;
+}
+
+const ONBOARDING_SLIDES: OnboardingSlide[] = [
     {
         id: '1',
-        image: require('@/assets/images/onboarding/slide1.png'),
-        title: 'Fisioterapi di Rumah Anda',
-        subtitle: 'Terapis profesional datang langsung ke rumah untuk memberikan perawatan terbaik dengan kenyamanan maksimal.',
+        title: 'Fisioterapi di Rumah',
+        subtitle: 'Layanan fisioterapi profesional langsung ke rumah Anda. Tidak perlu repot ke klinik.',
+        image: require('@/assets/images/onboarding/slide1.jpg'),
     },
     {
         id: '2',
-        image: require('@/assets/images/onboarding/slide2.png'),
-        title: 'Booking dengan Mudah',
-        subtitle: 'Pilih terapis, jadwal, dan lokasi sesuai kebutuhan Anda. Bayar online dengan aman dan praktis.',
+        title: 'Booking Mudah',
+        subtitle: 'Pilih terapis, jadwal, dan lokasi. Semudah memesan ojek online!',
+        image: require('@/assets/images/onboarding/slide2.jpg'),
     },
     {
         id: '3',
-        image: require('@/assets/images/onboarding/slide3.png'),
         title: 'Terapis Bersertifikat',
-        subtitle: 'Tim terapis kami terlatih dan bersertifikat. Kesehatan Anda adalah prioritas utama kami.',
+        subtitle: 'Semua terapis kami memiliki STR aktif dan pengalaman minimal 2 tahun.',
+        image: require('@/assets/images/onboarding/slide3.jpg'),
     },
 ];
-
-const ONBOARDING_COMPLETED_KEY = '@fisioku_onboarding_completed';
 
 export default function OnboardingScreen() {
     const colors = Colors.light;
     const router = useRouter();
+    const { completeOnboarding: contextCompleteOnboarding } = useOnboarding();
+
     const [currentIndex, setCurrentIndex] = useState(0);
-    const flatListRef = useRef<FlatList>(null);
-    const scrollX = useRef(new Animated.Value(0)).current;
+    const [isCompleting, setIsCompleting] = useState(false);
+    const isNavigatingRef = useRef(false);
 
     const handleNext = () => {
+        if (isCompleting) return;
+
         if (currentIndex < ONBOARDING_SLIDES.length - 1) {
-            flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+            setCurrentIndex(currentIndex + 1);
         } else {
-            completeOnboarding();
+            finishOnboarding();
         }
     };
 
     const handleSkip = () => {
-        completeOnboarding();
+        if (isCompleting) return;
+        finishOnboarding();
     };
 
-    const completeOnboarding = async () => {
+    const finishOnboarding = async () => {
+        // Prevent double navigation
+        if (isNavigatingRef.current) return;
+        isNavigatingRef.current = true;
+        setIsCompleting(true);
+
         try {
-            await AsyncStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
-            // Small delay to ensure AsyncStorage is saved before navigation
-            setTimeout(() => {
-                router.replace('/(auth)/login');
-            }, 100);
+            // This updates BOTH AsyncStorage AND shared context state
+            await contextCompleteOnboarding();
+            console.log('[Onboarding] Completion saved, navigating...');
+
+            // Navigation guard in _layout will now see hasCompletedOnboarding=true
+            // and redirect us to login automatically
+            router.replace('/(auth)/login');
         } catch (e) {
-            console.warn('Failed to save onboarding status:', e);
+            console.error('[Onboarding] Failed:', e);
+            // Context already updated state even on error, so navigation should work
             router.replace('/(auth)/login');
         }
     };
 
-    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-        if (viewableItems.length > 0) {
-            setCurrentIndex(viewableItems[0].index || 0);
-        }
-    }).current;
-
-    const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
-    const renderSlide = ({ item }: { item: typeof ONBOARDING_SLIDES[0] }) => (
-        <View style={styles.slide}>
-            <View style={styles.imageContainer}>
-                <Image source={item.image} style={styles.image} resizeMode="cover" />
-            </View>
-            <View style={styles.textContainer}>
-                <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
-            </View>
-        </View>
-    );
-
-    const renderDots = () => (
-        <View style={styles.dotsContainer}>
-            {ONBOARDING_SLIDES.map((_, index) => {
-                const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-                const dotWidth = scrollX.interpolate({
-                    inputRange,
-                    outputRange: [8, 24, 8],
-                    extrapolate: 'clamp',
-                });
-                const opacity = scrollX.interpolate({
-                    inputRange,
-                    outputRange: [0.4, 1, 0.4],
-                    extrapolate: 'clamp',
-                });
-                return (
-                    <Animated.View
-                        key={index}
-                        style={[
-                            styles.dot,
-                            {
-                                width: dotWidth,
-                                opacity,
-                                backgroundColor: colors.primary,
-                            },
-                        ]}
-                    />
-                );
-            })}
-        </View>
-    );
-
+    const currentSlide = ONBOARDING_SLIDES[currentIndex];
     const isLastSlide = currentIndex === ONBOARDING_SLIDES.length - 1;
 
     return (
@@ -138,34 +105,47 @@ export default function OnboardingScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Slides */}
-            <Animated.FlatList
-                ref={flatListRef}
-                data={ONBOARDING_SLIDES}
-                renderItem={renderSlide}
-                keyExtractor={(item) => item.id}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                bounces={false}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-            />
+            {/* Current Slide */}
+            <View style={styles.slideContainer}>
+                <View style={styles.imageContainer}>
+                    <Image source={currentSlide.image} style={styles.image} resizeMode="cover" />
+                </View>
+                <View style={styles.textContainer}>
+                    <Text style={[styles.title, { color: colors.text }]}>{currentSlide.title}</Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{currentSlide.subtitle}</Text>
+                </View>
+            </View>
 
             {/* Dots & Button */}
             <View style={styles.footer}>
-                {renderDots()}
+                {/* Dots */}
+                <View style={styles.dotsContainer}>
+                    {ONBOARDING_SLIDES.map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.dot,
+                                {
+                                    backgroundColor: index === currentIndex ? colors.primary : colors.border,
+                                    width: index === currentIndex ? 24 : 8,
+                                },
+                            ]}
+                        />
+                    ))}
+                </View>
+
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: colors.primary }]}
+                    style={[
+                        styles.button,
+                        { backgroundColor: colors.primary },
+                        isCompleting && { opacity: 0.6 }
+                    ]}
                     onPress={handleNext}
                     activeOpacity={0.8}
+                    disabled={isCompleting}
                 >
                     <Text style={styles.buttonText}>
-                        {isLastSlide ? 'Mulai Sekarang' : 'Lanjut'}
+                        {isCompleting ? 'Memuat...' : isLastSlide ? 'Mulai Sekarang' : 'Lanjut'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -179,19 +159,19 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: Spacing.lg,
-        paddingVertical: Spacing.md,
+        paddingTop: Spacing.md,
         alignItems: 'flex-end',
     },
     skipText: {
         fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.medium,
     },
-    slide: {
-        width,
+    slideContainer: {
         flex: 1,
     },
     imageContainer: {
-        flex: 0.6,
+        height: height * 0.45,
+        width: width,
         overflow: 'hidden',
     },
     image: {
@@ -199,13 +179,13 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     textContainer: {
-        flex: 0.4,
+        flex: 1,
         paddingHorizontal: Spacing.xl,
         paddingTop: Spacing.xl,
         alignItems: 'center',
     },
     title: {
-        fontSize: Typography.fontSize.xxl,
+        fontSize: Typography.fontSize['2xl'],
         fontWeight: Typography.fontWeight.bold,
         textAlign: 'center',
         marginBottom: Spacing.md,
@@ -217,14 +197,13 @@ const styles = StyleSheet.create({
     },
     footer: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: Spacing.xl,
+        paddingBottom: Spacing.xl * 2,
         alignItems: 'center',
     },
     dotsContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xl,
     },
     dot: {
         height: 8,
@@ -233,13 +212,13 @@ const styles = StyleSheet.create({
     },
     button: {
         width: '100%',
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.md + 4,
         borderRadius: BorderRadius.lg,
         alignItems: 'center',
     },
     buttonText: {
         color: '#fff',
-        fontSize: Typography.fontSize.lg,
+        fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
     },
 });

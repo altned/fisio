@@ -32,7 +32,7 @@ export class SessionController {
   @Post(':id/complete')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('THERAPIST')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   complete(
     @Param('id') id: string,
     @Body('notes') notes: string,
@@ -44,7 +44,7 @@ export class SessionController {
   @Post(':id/cancel')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT', 'THERAPIST')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   cancel(
     @Param('id') id: string,
     @Body('reason') reason?: string,
@@ -57,7 +57,7 @@ export class SessionController {
   @Post(':id/schedule')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT', 'ADMIN')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   schedule(@Req() req: any, @Param('id') id: string, @Body('scheduledAt') scheduledAt: string) {
     return this.sessionService.schedulePendingSession(id, new Date(scheduledAt), {
       id: req.user?.id,
@@ -75,7 +75,7 @@ export class SessionController {
   @Post(':id/swap-therapist')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('PATIENT', 'ADMIN')
-  @Throttle(10, 60)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   swapTherapist(
     @Req() req: any,
     @Param('id') id: string,

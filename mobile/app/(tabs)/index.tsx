@@ -493,7 +493,7 @@ export default function HomeScreen() {
             <QuickActionCard
               title="Booking Fisioterapi"
               subtitle="Pesan terapis ke rumah Anda"
-              icon="medical"
+              icon="fitness"
               colors={['#2196F3', '#1976D2']}
               onPress={() => router.push('/(tabs)/booking')}
             />

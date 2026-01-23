@@ -18,17 +18,70 @@ import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
 import { Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/store/auth';
 import { Ionicons } from '@expo/vector-icons';
+import {
+    GoogleSignin,
+    GoogleSigninButton,
+    statusCodes,
+} from '@react-native-google-signin/google-signin';
+
+// Google OAuth Client IDs from Google Cloud Console
+const GOOGLE_WEB_CLIENT_ID = '7503304584-c2j42psehfnj9d9ojsgmts1gcmud3d1j.apps.googleusercontent.com';
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: true,
+});
 
 export default function RegisterScreen() {
     const colors = Colors.light;
     const router = useRouter();
-    const { register, isLoading } = useAuthStore();
+    const { register, loginWithGoogle, isLoading } = useAuthStore();
 
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    const handleGoogleSignIn = async () => {
+        try {
+            setGoogleLoading(true);
+            setError(null);
+
+            // Check if Google Play Services are available
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            // Sign in with Google
+            const userInfo = await GoogleSignin.signIn();
+
+            // Get the ID token
+            const idToken = userInfo.data?.idToken;
+
+            if (idToken) {
+                await loginWithGoogle(idToken);
+                // Navigation handled by _layout.tsx
+            } else {
+                setError('Gagal mendapatkan token dari Google');
+            }
+        } catch (err: any) {
+            console.error('Google Sign-In error:', err);
+
+            if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User cancelled the sign-in
+                console.log('User cancelled Google Sign-In');
+            } else if (err.code === statusCodes.IN_PROGRESS) {
+                setError('Sign-in sedang dalam proses');
+            } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                setError('Google Play Services tidak tersedia');
+            } else {
+                setError(err.message || 'Daftar dengan Google gagal');
+            }
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
 
     const handleRegister = async () => {
         // Validation
@@ -50,11 +103,9 @@ export default function RegisterScreen() {
         setError(null);
 
         try {
-            // Navigate to role selection first
-            router.push({
-                pathname: '/(auth)/role-select',
-                params: { fullName, email, password },
-            });
+            // Register directly as PATIENT (therapists register via admin dashboard)
+            await register({ fullName, email, password, role: 'PATIENT' });
+            // Navigation handled by _layout.tsx after successful registration
         } catch (err: any) {
             setError(err.message || 'Registrasi gagal');
         }
@@ -86,6 +137,22 @@ export default function RegisterScreen() {
                                 <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                             </View>
                         )}
+
+                        {/* Google Sign-In Button - Official */}
+                        <GoogleSigninButton
+                            style={styles.googleSigninButton}
+                            size={GoogleSigninButton.Size.Wide}
+                            color={GoogleSigninButton.Color.Light}
+                            onPress={handleGoogleSignIn}
+                            disabled={googleLoading}
+                        />
+
+                        {/* Divider */}
+                        <View style={styles.divider}>
+                            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>atau</Text>
+                            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                        </View>
 
                         <Input
                             label="Nama Lengkap"
@@ -174,6 +241,24 @@ const styles = StyleSheet.create({
         marginLeft: Spacing.sm,
         fontSize: Typography.fontSize.sm,
         flex: 1,
+    },
+    googleSigninButton: {
+        width: '100%',
+        height: 48,
+        alignSelf: 'center',
+    },
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: Spacing.lg,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+    },
+    dividerText: {
+        marginHorizontal: Spacing.md,
+        fontSize: Typography.fontSize.sm,
     },
     button: {
         marginTop: Spacing.sm,

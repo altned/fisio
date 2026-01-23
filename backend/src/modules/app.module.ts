@@ -52,7 +52,7 @@ import { AppService } from '../services/app.service';
         AdminActionLog,
         MidtransWebhookLog,
       ],
-      synchronize: false,
+      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
       autoLoadEntities: true,
     }),
     BookingModule,

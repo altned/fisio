@@ -1,20 +1,15 @@
- 'use client';
+'use client';
 import { useEffect, useState } from 'react';
 import styles from './SettingsBar.module.css';
-import { useSettingsStore } from '../store/settings';
+import { useSettingsStore, API_BASE_URL } from '../store/settings';
 
 export function SettingsBar() {
-  const { apiBaseUrl, adminToken, setApiBaseUrl, setAdminToken, hydrate } = useSettingsStore();
-  const [baseUrlInput, setBaseUrlInput] = useState(apiBaseUrl);
+  const { adminToken, setAdminToken, hydrate } = useSettingsStore();
   const [tokenInput, setTokenInput] = useState(adminToken);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    setBaseUrlInput(apiBaseUrl);
-  }, [apiBaseUrl]);
 
   useEffect(() => {
     setTokenInput(adminToken);
@@ -26,11 +21,10 @@ export function SettingsBar() {
         <label htmlFor="apiBase">API Base URL</label>
         <input
           id="apiBase"
-          value={baseUrlInput}
-          onChange={(e) => setBaseUrlInput(e.target.value)}
-        onBlur={() => setApiBaseUrl(baseUrlInput.trim())}
-        placeholder="https://api.staging.example.com"
-      />
+          value={API_BASE_URL}
+          disabled
+          placeholder="Set via NEXT_PUBLIC_API_BASE_URL env"
+        />
       </div>
 
       <div className={styles.fieldGroup}>

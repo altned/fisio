@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  fisioku-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fisioku-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    networks:
+      - fisioku-network
+
+networks:
+  fisioku-network:
+    external: true
