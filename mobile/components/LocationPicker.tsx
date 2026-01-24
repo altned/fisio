@@ -1,3 +1,8 @@
+/**
+ * LocationPicker Component - Full-screen location selection using MapLibre (100% Google-Free)
+ * Uses OpenStreetMap raster tiles and Nominatim for reverse geocoding
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
@@ -5,13 +10,15 @@ import {
     StyleSheet,
     TouchableOpacity,
     ActivityIndicator,
-    Platform,
     Dimensions,
 } from 'react-native';
-import MapView, { UrlTile, Region } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Typography, Spacing, BorderRadius } from '@/constants/Theme';
+
+// Initialize MapLibre without access token (using OSM tiles)
+MapLibreGL.setAccessToken(null);
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,7 +36,28 @@ interface LocationPickerProps {
 // Default to Jakarta if no initial location
 const DEFAULT_LATITUDE = -6.2088;
 const DEFAULT_LONGITUDE = 106.8456;
-const DEFAULT_DELTA = 0.01;
+
+// OSM Raster Tile Style JSON (Free, no API key needed)
+const OSM_STYLE_JSON = {
+    version: 8,
+    sources: {
+        'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap Contributors',
+        },
+    },
+    layers: [
+        {
+            id: 'osm-layer',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 19,
+        },
+    ],
+};
 
 export default function LocationPicker({
     initialLatitude = DEFAULT_LATITUDE,
@@ -38,19 +66,17 @@ export default function LocationPicker({
     onCancel,
 }: LocationPickerProps) {
     const colors = Colors.light;
-    const mapRef = useRef<MapView>(null);
+    const cameraRef = useRef<MapLibreGL.Camera>(null);
 
-    const [region, setRegion] = useState<Region>({
-        latitude: initialLatitude,
-        longitude: initialLongitude,
-        latitudeDelta: DEFAULT_DELTA,
-        longitudeDelta: DEFAULT_DELTA,
-    });
+    const [centerCoords, setCenterCoords] = useState<[number, number]>([
+        initialLongitude,
+        initialLatitude,
+    ]);
 
     const [address, setAddress] = useState<string>('Mengambil alamat...');
     const [isLoadingAddress, setIsLoadingAddress] = useState(false);
 
-    // Fetch address when region changes
+    // Fetch address when coordinates change
     const fetchAddress = async (latitude: number, longitude: number) => {
         setIsLoadingAddress(true);
         try {
@@ -102,10 +128,13 @@ export default function LocationPicker({
         return parts.length > 0 ? parts.join(', ') : data.display_name;
     };
 
-    // Handle region change complete (user stopped dragging)
-    const handleRegionChangeComplete = (newRegion: Region) => {
-        setRegion(newRegion);
-        fetchAddress(newRegion.latitude, newRegion.longitude);
+    // Handle map region change
+    const handleRegionDidChange = async (feature: any) => {
+        if (feature.geometry?.coordinates) {
+            const [lng, lat] = feature.geometry.coordinates;
+            setCenterCoords([lng, lat]);
+            fetchAddress(lat, lng);
+        }
     };
 
     // Initial fetch
@@ -116,44 +145,41 @@ export default function LocationPicker({
     // Handle location selection
     const handleSelectLocation = () => {
         onLocationSelect({
-            latitude: region.latitude,
-            longitude: region.longitude,
+            latitude: centerCoords[1],
+            longitude: centerCoords[0],
             address: address,
         });
     };
 
-    // Center to current location
+    // Center to initial location
     const handleCenterToUser = async () => {
-        // You can add expo-location here for current location
-        // For now, just animate to initial position
-        mapRef.current?.animateToRegion({
-            latitude: initialLatitude,
-            longitude: initialLongitude,
-            latitudeDelta: DEFAULT_DELTA,
-            longitudeDelta: DEFAULT_DELTA,
+        cameraRef.current?.setCamera({
+            centerCoordinate: [initialLongitude, initialLatitude],
+            zoomLevel: 15,
+            animationDuration: 500,
         });
     };
 
     return (
         <View style={styles.container}>
             {/* Map */}
-            <MapView
-                ref={mapRef}
+            <MapLibreGL.MapView
                 style={styles.map}
-                initialRegion={region}
-                onRegionChangeComplete={handleRegionChangeComplete}
-                mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-                showsUserLocation={true}
-                showsMyLocationButton={false}
+                styleJSON={JSON.stringify(OSM_STYLE_JSON)}
+                logoEnabled={false}
+                attributionEnabled={true}
+                attributionPosition={{ bottom: 100, left: 8 }}
+                onRegionDidChange={handleRegionDidChange}
             >
-                {/* OpenStreetMap Tiles */}
-                <UrlTile
-                    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
-                    flipY={false}
-                    tileSize={256}
+                <MapLibreGL.Camera
+                    ref={cameraRef}
+                    defaultSettings={{
+                        centerCoordinate: centerCoords,
+                        zoomLevel: 15,
+                    }}
                 />
-            </MapView>
+                <MapLibreGL.UserLocation visible={true} />
+            </MapLibreGL.MapView>
 
             {/* Fixed Center Pin */}
             <View style={styles.pinContainer}>
@@ -190,7 +216,7 @@ export default function LocationPicker({
 
                 <View style={styles.coordinatesContainer}>
                     <Text style={[styles.coordinatesText, { color: colors.textSecondary }]}>
-                        {region.latitude.toFixed(6)}, {region.longitude.toFixed(6)}
+                        {centerCoords[1].toFixed(6)}, {centerCoords[0].toFixed(6)}
                     </Text>
                 </View>
 

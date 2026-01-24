@@ -1,5 +1,6 @@
 /**
- * MapPicker Component - Location selection using OpenStreetMap
+ * MapPicker Component - Location selection using MapLibre (100% Google-Free)
+ * Uses OpenStreetMap raster tiles
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,10 +14,13 @@ import {
     Alert,
     Platform,
 } from 'react-native';
-import MapView, { Marker, UrlTile, Region } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography, Spacing, BorderRadius, Shadow } from '@/constants/Theme';
+
+// Initialize MapLibre without access token (using OSM tiles)
+MapLibreGL.setAccessToken(null);
 
 interface MapPickerProps {
     visible: boolean;
@@ -30,8 +34,28 @@ interface MapPickerProps {
 const DEFAULT_LOCATION = {
     latitude: -6.2088,
     longitude: 106.8456,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+};
+
+// OSM Raster Tile Style JSON (Free, no API key needed)
+const OSM_STYLE_JSON = {
+    version: 8,
+    sources: {
+        'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap Contributors',
+        },
+    },
+    layers: [
+        {
+            id: 'osm-layer',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 19,
+        },
+    ],
 };
 
 export function MapPicker({
@@ -41,19 +65,14 @@ export function MapPicker({
     initialLocation,
     title = 'Pilih Lokasi',
 }: MapPickerProps) {
-    const mapRef = useRef<MapView>(null);
-    const [region, setRegion] = useState<Region>({
-        ...DEFAULT_LOCATION,
-        ...(initialLocation || {}),
-    });
-    const [markerPosition, setMarkerPosition] = useState(
-        initialLocation || { latitude: DEFAULT_LOCATION.latitude, longitude: DEFAULT_LOCATION.longitude }
-    );
+    const cameraRef = useRef<MapLibreGL.Camera>(null);
+    const [centerCoords, setCenterCoords] = useState<[number, number]>([
+        initialLocation?.longitude || DEFAULT_LOCATION.longitude,
+        initialLocation?.latitude || DEFAULT_LOCATION.latitude,
+    ]);
     const [address, setAddress] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
-    // Enable map by default - OSM tiles work without API key
-    const [mapError, setMapError] = useState(false);
 
     // Get current location on mount
     useEffect(() => {
@@ -62,12 +81,12 @@ export function MapPicker({
         }
     }, [visible, initialLocation]);
 
-    // Reverse geocode when marker position changes
+    // Reverse geocode when center coords change
     useEffect(() => {
-        if (markerPosition.latitude && markerPosition.longitude) {
-            reverseGeocode(markerPosition.latitude, markerPosition.longitude);
+        if (centerCoords[0] && centerCoords[1]) {
+            reverseGeocode(centerCoords[1], centerCoords[0]); // lat, lon
         }
-    }, [markerPosition]);
+    }, [centerCoords]);
 
     const getCurrentLocation = async () => {
         setIsGettingLocation(true);
@@ -82,24 +101,17 @@ export function MapPicker({
                 accuracy: Location.Accuracy.Balanced,
             });
 
-            const newPosition = {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-            };
+            const newCoords: [number, number] = [
+                location.coords.longitude,
+                location.coords.latitude,
+            ];
 
-            setMarkerPosition(newPosition);
-            setRegion({
-                ...newPosition,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
+            setCenterCoords(newCoords);
+            cameraRef.current?.setCamera({
+                centerCoordinate: newCoords,
+                zoomLevel: 16,
+                animationDuration: 500,
             });
-
-            // Animate map to current location
-            mapRef.current?.animateToRegion({
-                ...newPosition,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            }, 500);
 
         } catch (error) {
             console.error('Error getting location:', error);
@@ -138,15 +150,18 @@ export function MapPicker({
         }
     };
 
-    const handleMapPress = (event: any) => {
-        const { latitude, longitude } = event.nativeEvent.coordinate;
-        setMarkerPosition({ latitude, longitude });
+    // Handle map region change
+    const handleRegionDidChange = async (feature: any) => {
+        if (feature.geometry?.coordinates) {
+            const [lng, lat] = feature.geometry.coordinates;
+            setCenterCoords([lng, lat]);
+        }
     };
 
     const handleConfirm = () => {
         onConfirm({
-            latitude: markerPosition.latitude,
-            longitude: markerPosition.longitude,
+            latitude: centerCoords[1],
+            longitude: centerCoords[0],
             address: address || undefined,
         });
         onClose();
@@ -166,77 +181,48 @@ export function MapPicker({
 
                 {/* Map */}
                 <View style={styles.mapContainer}>
-                    {mapError ? (
-                        <View style={styles.mapErrorContainer}>
-                            <Ionicons name="location-outline" size={64} color="#2196F3" />
-                            <Text style={styles.mapErrorText}>Pilih Lokasi Anda</Text>
-                            <Text style={styles.mapErrorSubtext}>
-                                Gunakan lokasi GPS Anda saat ini
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.getLocationButton}
-                                onPress={getCurrentLocation}
-                                disabled={isGettingLocation}
-                            >
-                                {isGettingLocation ? (
-                                    <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="locate" size={20} color="#fff" />
-                                        <Text style={styles.getLocationButtonText}>
-                                            Gunakan Lokasi Saya
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <MapView
-                            ref={mapRef}
-                            style={styles.map}
-                            initialRegion={region}
-                            onPress={handleMapPress}
-                            showsUserLocation
-                            showsMyLocationButton={false}
-                            mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-                            onMapReady={() => setMapError(false)}
-                        >
-                            {/* Stadia Maps Tiles - Free and permissive */}
-                            <UrlTile
-                                urlTemplate="https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}.png"
-                                maximumZ={19}
-                                flipY={false}
-                            />
+                    <MapLibreGL.MapView
+                        style={styles.map}
+                        styleJSON={JSON.stringify(OSM_STYLE_JSON)}
+                        logoEnabled={false}
+                        attributionEnabled={true}
+                        attributionPosition={{ bottom: 8, left: 8 }}
+                        onRegionDidChange={handleRegionDidChange}
+                    >
+                        <MapLibreGL.Camera
+                            ref={cameraRef}
+                            defaultSettings={{
+                                centerCoordinate: centerCoords,
+                                zoomLevel: 15,
+                            }}
+                        />
+                        <MapLibreGL.UserLocation visible={true} />
+                    </MapLibreGL.MapView>
 
-                            {/* Selected Location Marker */}
-                            <Marker
-                                coordinate={markerPosition}
-                                draggable
-                                onDragEnd={(e) => setMarkerPosition(e.nativeEvent.coordinate)}
-                            />
-                        </MapView>
-                    )}
+                    {/* Fixed Center Pin */}
+                    <View style={styles.centerPinContainer}>
+                        <Ionicons name="location" size={48} color="#2196F3" />
+                        <View style={styles.pinShadow} />
+                    </View>
 
                     {/* Current Location Button */}
-                    {!mapError && (
-                        <TouchableOpacity
-                            style={styles.currentLocationButton}
-                            onPress={getCurrentLocation}
-                            disabled={isGettingLocation}
-                        >
-                            {isGettingLocation ? (
-                                <ActivityIndicator size="small" color="#2196F3" />
-                            ) : (
-                                <Ionicons name="locate" size={24} color="#2196F3" />
-                            )}
-                        </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                        style={styles.currentLocationButton}
+                        onPress={getCurrentLocation}
+                        disabled={isGettingLocation}
+                    >
+                        {isGettingLocation ? (
+                            <ActivityIndicator size="small" color="#2196F3" />
+                        ) : (
+                            <Ionicons name="locate" size={24} color="#2196F3" />
+                        )}
+                    </TouchableOpacity>
 
                     {/* Map Hint */}
                     <View style={styles.mapHint}>
                         <Ionicons name="information-circle" size={16} color="#6B7280" />
                         <Text style={styles.mapHintText}>
-                            {mapError ? 'Gunakan lokasi saat ini' : 'Tap atau drag marker untuk memilih lokasi'}
+                            Geser peta untuk memilih lokasi
                         </Text>
                     </View>
                 </View>
@@ -257,7 +243,7 @@ export function MapPicker({
                 {/* Coordinates Display */}
                 <View style={styles.coordinatesContainer}>
                     <Text style={styles.coordinatesText}>
-                        📍 {markerPosition.latitude.toFixed(6)}, {markerPosition.longitude.toFixed(6)}
+                        📍 {centerCoords[1].toFixed(6)}, {centerCoords[0].toFixed(6)}
                     </Text>
                 </View>
 
@@ -307,6 +293,22 @@ const styles = StyleSheet.create({
     },
     map: {
         flex: 1,
+    },
+    centerPinContainer: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        marginLeft: -24,
+        marginTop: -48,
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    pinShadow: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        marginTop: -4,
     },
     currentLocationButton: {
         position: 'absolute',
@@ -385,41 +387,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: Typography.fontSize.md,
         fontWeight: Typography.fontWeight.semibold,
-    },
-    mapErrorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F9FAFB',
-    },
-    mapErrorText: {
-        fontSize: Typography.fontSize.lg,
-        fontWeight: Typography.fontWeight.semibold,
-        color: '#6B7280',
-        marginTop: Spacing.md,
-    },
-    mapErrorSubtext: {
-        fontSize: Typography.fontSize.sm,
-        color: '#9CA3AF',
-        marginTop: Spacing.xs,
-        textAlign: 'center',
-        paddingHorizontal: Spacing.lg,
-    },
-    getLocationButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#2196F3',
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.xl,
-        borderRadius: BorderRadius.lg,
-        marginTop: Spacing.xl,
-    },
-    getLocationButtonText: {
-        color: '#fff',
-        fontSize: Typography.fontSize.md,
-        fontWeight: Typography.fontWeight.semibold,
-        marginLeft: Spacing.sm,
     },
 });
 
